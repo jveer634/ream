@@ -23,6 +23,9 @@ pub enum ApiError {
 
     #[error("Too many validator IDs in request")]
     TooManyValidatorsIds,
+
+    #[error("Beacon node is currently syncing and not serving request on that endpoint")]
+    UnderSyncing,
 }
 
 impl ResponseError for ApiError {
@@ -39,6 +42,7 @@ impl ResponseError for ApiError {
             ApiError::InvalidParameter(_) => StatusCode::BAD_REQUEST,
             ApiError::ValidatorNotFound(_) => StatusCode::NOT_FOUND,
             ApiError::TooManyValidatorsIds => StatusCode::URI_TOO_LONG,
+            ApiError::UnderSyncing => StatusCode::SERVICE_UNAVAILABLE,
         }
     }
 }

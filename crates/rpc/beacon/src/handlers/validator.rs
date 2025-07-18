@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::{collections::HashSet, sync::Arc};
 
 use actix_web::{
     HttpResponse, Responder, get, post,
@@ -7,19 +7,25 @@ use actix_web::{
 use ream_beacon_api_types::{
     error::ApiError,
     id::{ID, ValidatorID},
-    query::{IdQuery, StatusQuery},
+    query::{AttestationQuery, IdQuery, StatusQuery},
     request::ValidatorsPostRequest,
-    responses::BeaconResponse,
+    responses::{BeaconResponse, DataResponse},
     validator::{ValidatorBalance, ValidatorData, ValidatorStatus},
 };
 use ream_bls::PublicKey;
 use ream_consensus_beacon::electra::beacon_state::BeaconState;
-use ream_consensus_misc::{constants::SLOTS_PER_EPOCH, validator::Validator};
-use ream_storage::db::ReamDB;
+use ream_consensus_misc::{
+    attestation_data::AttestationData, constants::SLOTS_PER_EPOCH, validator::Validator,
+};
+use ream_fork_choice::store::Store;
+use ream_operation_pool::OperationPool;
+use ream_storage::{db::ReamDB, tables::Field};
 use serde::Serialize;
 
 use super::state::get_state_from_id;
 
+///  For slots in Electra and later, this AttestationData must have a committee_index of 0.
+const ELECTRA_COMMITTEE_INDEX: u64 = 0;
 const MAX_VALIDATOR_COUNT: usize = 100;
 
 fn build_validator_balances(
@@ -422,4 +428,60 @@ fn check_validator_participation(
     } else {
         Ok(validator.is_active_validator(epoch))
     }
+}
+#[get("/validator/attestation_data")]
+pub async fn get_attestation_data(
+    db: Data<ReamDB>,
+    opertation_pool: Data<Arc<OperationPool>>,
+    query: Query<AttestationQuery>,
+) -> Result<impl Responder, ApiError> {
+    let store = Store {
+        db: db.get_ref().clone(),
+        operation_pool: opertation_pool.get_ref().clone(),
+    };
+
+    if store.is_syncing().map_err(|err| {
+        ApiError::InternalError(format!("Failed to check syncing status, err: {err:?}"))
+    })? {
+        return Err(ApiError::UnderSyncing);
+    }
+
+    let slot = query.slot;
+
+    let current_slot = store
+        .get_current_slot()
+        .map_err(|err| ApiError::InternalError(format!("Failed to slot_index, error: {err:?}")))?;
+
+    if slot > current_slot + 1 {
+        return Err(ApiError::InvalidParameter(format!(
+            "Slot {slot:?} is too far ahead of the current slot {current_slot:?}"
+        )));
+    }
+
+    let beacon_block_root = db
+        .slot_index_provider()
+        .get_highest_root()
+        .map_err(|err| ApiError::InternalError(format!("Failed to slot_index, error: {err:?}")))?
+        .ok_or(ApiError::NotFound(
+            "Failed to find highest block root".to_string(),
+        ))?;
+
+    let source_checkpoint = db.justified_checkpoint_provider().get().map_err(|err| {
+        ApiError::InternalError(format!("Failed to get source checkpoint, error: {err:?}"))
+    })?;
+
+    let target_checkpoint = db
+        .unrealized_justified_checkpoint_provider()
+        .get()
+        .map_err(|err| {
+            ApiError::InternalError(format!("Failed to target checkpoint, error: {err:?}"))
+        })?;
+
+    Ok(HttpResponse::Ok().json(DataResponse::new(AttestationData {
+        slot,
+        index: ELECTRA_COMMITTEE_INDEX,
+        beacon_block_root,
+        source: source_checkpoint,
+        target: target_checkpoint,
+    })))
 }

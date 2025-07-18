@@ -802,6 +802,22 @@ impl Store {
 
         Ok(())
     }
+
+    pub fn is_syncing(&self) -> anyhow::Result<bool> {
+        let head = self.get_head()?;
+
+        let head_slot = match self.db.beacon_block_provider().get(head) {
+            Ok(Some(block)) => block.message.slot,
+            err => {
+                return Err(anyhow!("Failed to get head slot, error: {err:?}"));
+            }
+        };
+
+        // calculate sync_distance
+        let sync_distance = self.get_current_slot()?.saturating_sub(head_slot);
+
+        Ok(sync_distance > 1)
+    }
 }
 
 pub fn get_forkchoice_store(
