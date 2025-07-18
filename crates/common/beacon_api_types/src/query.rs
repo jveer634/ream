@@ -44,6 +44,12 @@ pub struct StatusQuery {
     pub status: Option<Vec<ValidatorStatus>>,
 }
 
+#[derive(Default, Debug, Deserialize)]
+pub struct AttestationQuery {
+    pub slot: String,
+    pub committee_index: String,
+}
+
 impl StatusQuery {
     pub fn has_status(&self) -> bool {
         match &self.status {
