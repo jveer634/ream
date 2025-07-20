@@ -7,9 +7,9 @@ use actix_web::{
 use ream_beacon_api_types::{
     error::ApiError,
     id::{ID, ValidatorID},
-    query::{IdQuery, StatusQuery},
+    query::{BlockQuery, IdQuery, StatusQuery},
     request::ValidatorsPostRequest,
-    responses::BeaconResponse,
+    responses::{BeaconResponse, DataResponse},
     validator::{ValidatorBalance, ValidatorData, ValidatorStatus},
 };
 use ream_bls::PublicKey;
@@ -423,4 +423,15 @@ fn check_validator_participation(
     } else {
         Ok(validator.is_active_validator(epoch))
     }
+}
+
+#[get("/validator/blocks/{slot}")]
+pub async fn prepare_block(
+    db: Data<ReamDB>,
+    slot: Path<u64>,
+    query: Query<BlockQuery>,
+) -> Result<impl Responder, ApiError> {
+    let block = {};
+
+    Ok(HttpResponse::Ok().json(DataResponse::new(block)))
 }

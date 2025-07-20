@@ -1,4 +1,5 @@
 use alloy_primitives::B256;
+use ream_bls::BLSSignature;
 use serde::{Deserialize, Serialize};
 
 use super::id::ValidatorID;
@@ -42,6 +43,15 @@ pub struct BlobSidecarQuery {
 #[derive(Default, Debug, Deserialize)]
 pub struct StatusQuery {
     pub status: Option<Vec<ValidatorStatus>>,
+}
+
+#[derive(Default, Debug, Deserialize)]
+pub struct BlockQuery {
+    pub slot: u64,
+    pub randao_reveal: BLSSignature,
+    pub graffiti: Option<B256>,
+    pub skip_randao_verification: Option<BLSSignature>,
+    pub builder_booster_factor: Option<u64>,
 }
 
 impl StatusQuery {
