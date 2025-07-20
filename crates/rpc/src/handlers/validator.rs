@@ -9,12 +9,12 @@ use ream_beacon_api_types::{
     id::{ID, ValidatorID},
     query::{AttestationQuery, IdQuery, StatusQuery},
     request::ValidatorsPostRequest,
-    responses::BeaconResponse,
+    responses::{BeaconResponse, DataResponse},
     validator::{ValidatorBalance, ValidatorData, ValidatorStatus},
 };
 use ream_bls::PublicKey;
 use ream_consensus::{
-    attestation_data::AttestationData, checkpoint::Checkpoint, constants::SLOTS_PER_EPOCH,
+    attestation_data::AttestationData, constants::SLOTS_PER_EPOCH,
     electra::beacon_state::BeaconState, validator::Validator,
 };
 use ream_storage::db::ReamDB;
@@ -454,11 +454,11 @@ pub async fn get_attestation_data(
 
     let data = AttestationData {
         slot: query.slot,
-        index: query.committee_index,
+        index: 0,
         beacon_block_root,
         source,
         target,
     };
 
-    Ok(HttpResponse::Ok().json(BeaconResponse::new(data)))
+    Ok(HttpResponse::Ok().json(DataResponse::new(data)))
 }
