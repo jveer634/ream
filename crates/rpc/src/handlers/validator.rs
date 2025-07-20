@@ -7,14 +7,15 @@ use actix_web::{
 use ream_beacon_api_types::{
     error::ApiError,
     id::{ID, ValidatorID},
-    query::{IdQuery, StatusQuery},
+    query::{AttestationQuery, IdQuery, StatusQuery},
     request::ValidatorsPostRequest,
     responses::BeaconResponse,
     validator::{ValidatorBalance, ValidatorData, ValidatorStatus},
 };
 use ream_bls::PublicKey;
 use ream_consensus::{
-    constants::SLOTS_PER_EPOCH, electra::beacon_state::BeaconState, validator::Validator,
+    attestation_data::AttestationData, checkpoint::Checkpoint, constants::SLOTS_PER_EPOCH,
+    electra::beacon_state::BeaconState, validator::Validator,
 };
 use ream_storage::db::ReamDB;
 use serde::Serialize;
@@ -423,4 +424,41 @@ fn check_validator_participation(
     } else {
         Ok(validator.is_active_validator(epoch))
     }
+}
+#[get("/validator/attestation_data")]
+pub async fn get_attestation_data(
+    db: Data<ReamDB>,
+    query: Query<AttestationQuery>,
+) -> Result<impl Responder, ApiError> {
+    let beacon_block_root = db
+        .slot_index_provider()
+        .get_highest_root()
+        .map_err(|err| ApiError::InternalError(format!("Failed to slot_index, error: {err:?}")))?
+        .ok_or(ApiError::NotFound(
+            "Failed to find highest block root".to_string(),
+        ))?;
+
+    let source = db
+        .justified_checkpoint_provider()
+        .get_justified_checkpoint()
+        .map_err(|err| {
+            ApiError::InternalError(format!("Failed to get source checkpoint, error: {err:?}"))
+        })?;
+
+    let target = db
+        .unrealized_justified_checkpoint_provider()
+        .get_unrealized_checkpoint()
+        .map_err(|err| {
+            ApiError::InternalError(format!("Failed to target checkpoint, error: {err:?}"))
+        })?;
+
+    let data = AttestationData {
+        slot: query.slot,
+        index: query.committee_index,
+        beacon_block_root,
+        source,
+        target,
+    };
+
+    Ok(HttpResponse::Ok().json(BeaconResponse::new(data)))
 }
