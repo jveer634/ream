@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::{collections::HashSet, sync::Arc};
 
 use actix_web::{
     HttpResponse, Responder, get, post,
@@ -14,15 +14,24 @@ use ream_beacon_api_types::{
 };
 use ream_bls::PublicKey;
 use ream_consensus::{
-    attestation_data::AttestationData, constants::SLOTS_PER_EPOCH,
-    electra::beacon_state::BeaconState, validator::Validator,
+    attestation_data::AttestationData,
+    checkpoint::Checkpoint,
+    constants::SLOTS_PER_EPOCH,
+    electra::beacon_state::BeaconState,
+    misc::{compute_epoch_at_slot, compute_start_slot_at_epoch},
+    validator::Validator,
 };
-use ream_storage::db::ReamDB;
+use ream_fork_choice::store::Store;
+use ream_operation_pool::OperationPool;
+use ream_storage::{db::ReamDB, tables::Table};
 use serde::Serialize;
 
 use super::state::get_state_from_id;
 
 const MAX_VALIDATOR_COUNT: usize = 100;
+
+//  For slots in Electra and later, this AttestationData must have a committee_index of 0.
+const ELECTRA_COMMITTEE_INDEX: u64 = 0;
 
 fn build_validator_balances(
     validators: &[(Validator, u64)],
@@ -428,36 +437,105 @@ fn check_validator_participation(
 #[get("/validator/attestation_data")]
 pub async fn get_attestation_data(
     db: Data<ReamDB>,
+    operation_pool: Data<Arc<OperationPool>>,
     query: Query<AttestationQuery>,
 ) -> Result<impl Responder, ApiError> {
+    let store = Store {
+        db: db.get_ref().clone(),
+        operation_pool: operation_pool.get_ref().clone(),
+    };
+    let slot = query.slot;
+    let current_slot = store.get_current_slot().map_err(|err| {
+        ApiError::InternalError(format!("Failed to get current slot, error: {err:?}"))
+    })?;
+
+    if slot > current_slot + 1u64 {
+        return Err(ApiError::InvalidParameter(format!(
+            "slot too far in the future {slot:?}"
+        )));
+    }
+
+    if slot == current_slot || slot == current_slot + 1u64 {
+        let beacon_block_root = db
+            .slot_index_provider()
+            .get_highest_root()
+            .map_err(|err| {
+                ApiError::InternalError(format!("Failed to slot_index, error: {err:?}"))
+            })?
+            .ok_or(ApiError::InternalError(format!(
+                "Failed to get block_root for {slot:?}"
+            )))?;
+
+        let source = db
+            .justified_checkpoint_provider()
+            .get_justified_checkpoint()
+            .map_err(|err| {
+                ApiError::InternalError(format!("Failed to get source checkpoint, error: {err:?}"))
+            })?;
+        let target = db
+            .unrealized_justified_checkpoint_provider()
+            .get_unrealized_checkpoint()
+            .map_err(|err| {
+                ApiError::InternalError(format!("Failed to target checkpoint, error: {err:?}"))
+            })?;
+
+        let data = AttestationData {
+            slot,
+            index: ELECTRA_COMMITTEE_INDEX,
+            beacon_block_root,
+            source,
+            target,
+        };
+
+        return Ok(HttpResponse::Ok().json(DataResponse::new(data)));
+    }
+
     let beacon_block_root = db
         .slot_index_provider()
-        .get_highest_root()
+        .get(slot)
         .map_err(|err| ApiError::InternalError(format!("Failed to slot_index, error: {err:?}")))?
-        .ok_or(ApiError::NotFound(
-            "Failed to find highest block root".to_string(),
-        ))?;
+        .ok_or(ApiError::InternalError(format!(
+            "Failed to get block_root for {slot:?}"
+        )))?;
 
-    let source = db
-        .justified_checkpoint_provider()
-        .get_justified_checkpoint()
+    let source_epoch = compute_epoch_at_slot(slot);
+    let target_epoch = source_epoch + 1;
+
+    let epoch_start_slot = compute_start_slot_at_epoch(source_epoch);
+    let epoch_end_slot = epoch_start_slot + SLOTS_PER_EPOCH;
+
+    let source_root = db
+        .slot_index_provider()
+        .get(epoch_start_slot)
         .map_err(|err| {
             ApiError::InternalError(format!("Failed to get source checkpoint, error: {err:?}"))
-        })?;
+        })?
+        .ok_or(ApiError::InternalError(
+            "Failed to source checkpoint root".to_string(),
+        ))?;
 
-    let target = db
-        .unrealized_justified_checkpoint_provider()
-        .get_unrealized_checkpoint()
+    let target_root = db
+        .slot_index_provider()
+        .get(epoch_end_slot)
         .map_err(|err| {
             ApiError::InternalError(format!("Failed to target checkpoint, error: {err:?}"))
-        })?;
+        })?
+        .ok_or(ApiError::InternalError(
+            "Failed to target checkpoint root, error".to_string(),
+        ))?;
 
     let data = AttestationData {
-        slot: query.slot,
-        index: 0,
+        slot,
+        index: ELECTRA_COMMITTEE_INDEX,
         beacon_block_root,
-        source,
-        target,
+        source: Checkpoint {
+            epoch: source_epoch,
+            root: source_root,
+        },
+        target: Checkpoint {
+            epoch: target_epoch,
+            root: target_root,
+        },
     };
 
     Ok(HttpResponse::Ok().json(DataResponse::new(data)))
