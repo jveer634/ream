@@ -46,8 +46,8 @@ pub struct StatusQuery {
 
 #[derive(Default, Debug, Deserialize)]
 pub struct AttestationQuery {
-    pub slot: u64,
-    pub committee_index: u64,
+    pub slot: String,
+    pub committee_index: String,
 }
 
 impl StatusQuery {
