@@ -41,9 +41,3 @@ impl Field for JustifiedCheckpointField {
         Ok(())
     }
 }
-
-impl JustifiedCheckpointField {
-    pub fn get_justified_checkpoint(&self) -> Result<Checkpoint, StoreError> {
-        self.get()
-    }
-}
