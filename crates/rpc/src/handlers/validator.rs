@@ -7,19 +7,19 @@ use actix_web::{
 use ream_beacon_api_types::{
     error::ApiError,
     id::{ID, ValidatorID},
-    query::{IdQuery, StatusQuery},
+    query::{AttestationQuery, IdQuery, StatusQuery},
     request::ValidatorsPostRequest,
     responses::{BeaconResponse, DataResponse},
     validator::{ValidatorBalance, ValidatorData, ValidatorStatus},
 };
 use ream_bls::PublicKey;
 use ream_consensus::{
-    attestation_data::AttestationData, checkpoint::Checkpoint, constants::SLOTS_PER_EPOCH,
+    attestation_data::AttestationData, constants::SLOTS_PER_EPOCH,
     electra::beacon_state::BeaconState, validator::Validator,
 };
 use ream_fork_choice::store::Store;
 use ream_operation_pool::OperationPool;
-use ream_storage::{db::ReamDB, tables::Table};
+use ream_storage::{db::ReamDB, tables::Field};
 use serde::Serialize;
 
 use super::state::get_state_from_id;
@@ -433,8 +433,32 @@ fn check_validator_participation(
 #[get("/validator/attestation_data")]
 pub async fn get_attestation_data(
     db: Data<ReamDB>,
+    opertation_pool: Data<Arc<OperationPool>>,
     query: Query<AttestationQuery>,
 ) -> Result<impl Responder, ApiError> {
+    let store = Store {
+        db: db.get_ref().clone(),
+        operation_pool: opertation_pool.get_ref().clone(),
+    };
+
+    if store.is_syncing().map_err(|err| {
+        ApiError::InternalError(format!("Failed to check syncing status, err: {err:?}"))
+    })? {
+        return Err(ApiError::UnderSyncing);
+    }
+
+    let slot = query.slot;
+
+    let current_slot = store
+        .get_current_slot()
+        .map_err(|err| ApiError::InternalError(format!("Failed to slot_index, error: {err:?}")))?;
+
+    if slot > current_slot + 1u64 {
+        return Err(ApiError::InvalidParameter(format!(
+            "Slot {slot:?} is too far ahead of the current slot {current_slot:?}"
+        )));
+    }
+
     let beacon_block_root = db
         .slot_index_provider()
         .get_highest_root()
@@ -443,27 +467,24 @@ pub async fn get_attestation_data(
             "Failed to find highest block root".to_string(),
         ))?;
 
-    let source = db
-        .justified_checkpoint_provider()
-        .get_justified_checkpoint()
-        .map_err(|err| {
-            ApiError::InternalError(format!("Failed to get source checkpoint, error: {err:?}"))
-        })?;
+    let source = db.justified_checkpoint_provider().get().map_err(|err| {
+        ApiError::InternalError(format!("Failed to get source checkpoint, error: {err:?}"))
+    })?;
 
     let target = db
         .unrealized_justified_checkpoint_provider()
-        .get_unrealized_checkpoint()
+        .get()
         .map_err(|err| {
             ApiError::InternalError(format!("Failed to target checkpoint, error: {err:?}"))
         })?;
 
     let data = AttestationData {
-        slot: query.slot,
-        index: query.committee_index,
+        slot,
+        index: ELECTRA_COMMITTEE_INDEX,
         beacon_block_root,
         source,
         target,
     };
 
-    Ok(HttpResponse::Ok().json(BeaconResponse::new(data)))
+    Ok(HttpResponse::Ok().json(DataResponse::new(data)))
 }
