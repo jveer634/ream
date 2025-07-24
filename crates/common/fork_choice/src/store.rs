@@ -813,9 +813,7 @@ impl Store {
         };
 
         // calculate sync_distance
-        let current_slot = self.get_current_slot()?;
-
-        let sync_distance = current_slot.saturating_sub(head_slot);
+        let sync_distance = self.get_current_slot()?.saturating_sub(head_slot);
 
         Ok(sync_distance > 1)
     }

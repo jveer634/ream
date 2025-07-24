@@ -24,10 +24,9 @@ use serde::Serialize;
 
 use super::state::get_state_from_id;
 
-const MAX_VALIDATOR_COUNT: usize = 100;
-
-//  For slots in Electra and later, this AttestationData must have a committee_index of 0.
+///  For slots in Electra and later, this AttestationData must have a committee_index of 0.
 const ELECTRA_COMMITTEE_INDEX: u64 = 0;
+const MAX_VALIDATOR_COUNT: usize = 100;
 
 fn build_validator_balances(
     validators: &[(Validator, u64)],
@@ -453,7 +452,7 @@ pub async fn get_attestation_data(
         .get_current_slot()
         .map_err(|err| ApiError::InternalError(format!("Failed to slot_index, error: {err:?}")))?;
 
-    if slot > current_slot + 1u64 {
+    if slot > current_slot + 1 {
         return Err(ApiError::InvalidParameter(format!(
             "Slot {slot:?} is too far ahead of the current slot {current_slot:?}"
         )));
@@ -467,24 +466,22 @@ pub async fn get_attestation_data(
             "Failed to find highest block root".to_string(),
         ))?;
 
-    let source = db.justified_checkpoint_provider().get().map_err(|err| {
+    let source_checkpoint = db.justified_checkpoint_provider().get().map_err(|err| {
         ApiError::InternalError(format!("Failed to get source checkpoint, error: {err:?}"))
     })?;
 
-    let target = db
+    let target_checkpoint = db
         .unrealized_justified_checkpoint_provider()
         .get()
         .map_err(|err| {
             ApiError::InternalError(format!("Failed to target checkpoint, error: {err:?}"))
         })?;
 
-    let data = AttestationData {
+    Ok(HttpResponse::Ok().json(DataResponse::new(AttestationData {
         slot,
         index: ELECTRA_COMMITTEE_INDEX,
         beacon_block_root,
-        source,
-        target,
-    };
-
-    Ok(HttpResponse::Ok().json(DataResponse::new(data)))
+        source: source_checkpoint,
+        target: target_checkpoint,
+    })))
 }

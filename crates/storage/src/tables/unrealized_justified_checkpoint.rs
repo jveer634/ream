@@ -41,9 +41,3 @@ impl Field for UnrealizedJustifiedCheckpointField {
         Ok(())
     }
 }
-
-impl UnrealizedJustifiedCheckpointField {
-    pub fn get_unrealized_checkpoint(&self) -> Result<Checkpoint, StoreError> {
-        self.get()
-    }
-}
