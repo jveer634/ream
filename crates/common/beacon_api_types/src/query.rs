@@ -46,12 +46,12 @@ pub struct StatusQuery {
 }
 
 #[derive(Default, Debug, Deserialize)]
-pub struct BlockQuery {
+pub struct ValidatorBlockQuery {
     pub slot: u64,
     pub randao_reveal: BLSSignature,
     pub graffiti: Option<B256>,
-    pub skip_randao_verification: Option<BLSSignature>,
-    pub builder_booster_factor: Option<u64>,
+    pub skip_randao_verification: Option<bool>,
+    pub builder_boost_factor: Option<u64>,
 }
 
 impl StatusQuery {

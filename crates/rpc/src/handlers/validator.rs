@@ -5,16 +5,19 @@ use actix_web::{
     web::{Data, Json, Path, Query},
 };
 use ream_beacon_api_types::{
+    block::ProduceBlockResponse,
     error::ApiError,
     id::{ID, ValidatorID},
-    query::{BlockQuery, IdQuery, StatusQuery},
+    query::{IdQuery, StatusQuery, ValidatorBlockQuery},
     request::ValidatorsPostRequest,
-    responses::{BeaconResponse, DataResponse},
+    responses::BeaconResponse,
     validator::{ValidatorBalance, ValidatorData, ValidatorStatus},
 };
-use ream_bls::PublicKey;
+use ream_bls::{BLSSignature, PublicKey};
 use ream_consensus::{
-    constants::SLOTS_PER_EPOCH, electra::beacon_state::BeaconState, validator::Validator,
+    constants::{DEFAULT_BOOST_FACTOR, SLOTS_PER_EPOCH},
+    electra::beacon_state::BeaconState,
+    validator::Validator,
 };
 use ream_storage::db::ReamDB;
 use serde::Serialize;
@@ -429,9 +432,18 @@ fn check_validator_participation(
 pub async fn prepare_block(
     db: Data<ReamDB>,
     slot: Path<u64>,
-    query: Query<BlockQuery>,
+    query: Query<ValidatorBlockQuery>,
 ) -> Result<impl Responder, ApiError> {
-    let block = {};
+    let block: ProduceBlockResponse = {};
 
-    Ok(HttpResponse::Ok().json(DataResponse::new(block)))
+    // let randao_verification =
+    //     get_randao_verification(query.randao_reveal, query.skip_randao_verification, true)?;
+
+    // let builder_boost_factor = if query.builder_boost_factor == Some(DEFAULT_BOOST_FACTOR) {
+    //     None
+    // } else {
+    //     query.builder_boost_factor
+    // };
+
+    Ok(HttpResponse::Ok().json(block))
 }

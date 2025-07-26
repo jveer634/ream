@@ -135,6 +135,9 @@ pub const PARTICIPATION_FLAG_WEIGHTS: [u64; NUM_FLAG_INDICES] = [
     TIMELY_HEAD_WEIGHT,
 ];
 
+// MEV
+pub const DEFAULT_BOOST_FACTOR: u64 = 100;
+
 pub static GENESIS_VALIDATORS_ROOT: OnceLock<B256> = OnceLock::new();
 
 /// MUST be called only once at the start of the application to initialize static

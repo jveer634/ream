@@ -1,5 +1,4 @@
 use actix_web::web::{ServiceConfig, scope};
-use discv5::service::Service;
 
 pub mod beacon;
 pub mod config;
@@ -27,12 +26,12 @@ pub fn get_v2_routes(config: &mut ServiceConfig) {
 }
 
 pub fn get_v3_routes(config: &mut ServiceConfig) {
-    config.service(
-        scope("/eth/v3")
-            .configure(validator::register_debug_routes_v3)
-    );
+    config.service(scope("/eth/v3").configure(validator::register_validator_routes_v3));
 }
 
 pub fn register_routers(config: &mut ServiceConfig) {
-    config.configure(get_v1_routes).configure(get_v2_routes);
+    config
+        .configure(get_v1_routes)
+        .configure(get_v2_routes)
+        .configure(get_v3_routes);
 }
