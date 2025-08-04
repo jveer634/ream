@@ -16,7 +16,7 @@ use libp2p::{
     core::UpgradeInfo,
 };
 use ream_consensus_misc::constants::genesis_validators_root;
-use ream_network_spec::networks::network_spec;
+use ream_network_spec::networks::beacon_network_spec;
 use snap::{read::FrameDecoder, write::FrameEncoder};
 use ssz::{Decode, Encode};
 use ssz_types::{VariableList, typenum::U256};
@@ -135,7 +135,7 @@ impl Encoder<RespMessage> for InboundSSZSnappyCodec {
         }
 
         if self.protocol.protocol.has_context_bytes() && response_code == ResponseCode::Success {
-            dst.extend(network_spec().fork_digest(genesis_validators_root()));
+            dst.extend(beacon_network_spec().fork_digest(genesis_validators_root()));
         }
 
         Uvi::<usize>::default().encode(bytes.len(), dst)?;

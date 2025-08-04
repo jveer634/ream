@@ -1,7 +1,7 @@
 use alloy_primitives::B256;
 use ream_bls::{BLSSignature, PrivateKey, traits::Signable};
 use ream_consensus_misc::misc::{compute_domain, compute_signing_root};
-use ream_network_spec::networks::network_spec;
+use ream_network_spec::networks::beacon_network_spec;
 use serde::{Deserialize, Serialize};
 use ssz_derive::{Decode, Encode};
 use ssz_types::{BitVector, typenum::U128};
@@ -58,7 +58,7 @@ pub fn get_contribution_and_proof_signature(
 ) -> anyhow::Result<BLSSignature> {
     let domain = compute_domain(
         DOMAIN_CONTRIBUTION_AND_PROOF,
-        Some(network_spec().electra_fork_version),
+        Some(beacon_network_spec().electra_fork_version),
         None,
     );
     let signing_root = compute_signing_root(contribution_and_proof, domain);

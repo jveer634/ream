@@ -14,7 +14,7 @@ use futures::{
 use libp2p::{OutboundUpgrade, bytes::Buf, core::UpgradeInfo};
 use ream_consensus_beacon::{blob_sidecar::BlobSidecar, electra::beacon_block::SignedBeaconBlock};
 use ream_consensus_misc::constants::genesis_validators_root;
-use ream_network_spec::networks::network_spec;
+use ream_network_spec::networks::beacon_network_spec;
 use snap::{read::FrameDecoder, write::FrameEncoder};
 use ssz::{Decode, Encode};
 use ssz_types::{VariableList, typenum::U256};
@@ -144,7 +144,7 @@ impl Decoder for OutboundSSZSnappyCodec {
         }
 
         if let Some(context_bytes) = self.context_bytes
-            && context_bytes != network_spec().fork_digest(genesis_validators_root())
+            && context_bytes != beacon_network_spec().fork_digest(genesis_validators_root())
         {
             return Ok(Some(RespMessage::Error(ReqRespError::InvalidData(
                 "Invalid context bytes, we only support Electra".to_string(),

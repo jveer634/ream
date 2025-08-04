@@ -21,7 +21,7 @@ use ream_consensus_misc::{
     constants::{GENESIS_EPOCH, GENESIS_SLOT, INTERVALS_PER_SLOT, SLOTS_PER_EPOCH},
     misc::{compute_epoch_at_slot, compute_start_slot_at_epoch, is_shuffling_stable},
 };
-use ream_network_spec::networks::network_spec;
+use ream_network_spec::networks::beacon_network_spec;
 use ream_operation_pool::OperationPool;
 use ream_polynomial_commitments::handlers::verify_blob_kzg_proof_batch;
 use ream_storage::{
@@ -69,7 +69,7 @@ impl Store {
     pub fn get_slots_since_genesis(&self) -> anyhow::Result<u64> {
         Ok(
             (self.db.time_provider().get()? - self.db.genesis_time_provider().get()?)
-                / network_spec().seconds_per_slot,
+                / beacon_network_spec().seconds_per_slot,
         )
     }
 
@@ -252,6 +252,11 @@ impl Store {
                 self.operation_pool
                     .clean_signed_voluntary_exits(&beacon_state);
 
+                // Clean expired proposer preparations
+                let current_epoch = self.get_current_store_epoch()?;
+                self.operation_pool
+                    .clean_proposer_preparations(current_epoch);
+
                 if let Some(beacon_block) = self
                     .db
                     .beacon_block_provider()
@@ -330,8 +335,8 @@ impl Store {
         // Use half `SECONDS_PER_SLOT // INTERVALS_PER_SLOT` as the proposer reorg deadline
         let time_into_slot = (self.db.time_provider().get()?
             - self.db.genesis_time_provider().get()?)
-            % network_spec().seconds_per_slot;
-        let proposer_reorg_cutoff = network_spec().seconds_per_slot / INTERVALS_PER_SLOT / 2;
+            % beacon_network_spec().seconds_per_slot;
+        let proposer_reorg_cutoff = beacon_network_spec().seconds_per_slot / INTERVALS_PER_SLOT / 2;
         Ok(time_into_slot <= proposer_reorg_cutoff)
     }
 
@@ -844,8 +849,9 @@ pub fn get_forkchoice_store(
         signature,
     };
 
-    db.time_provider()
-        .insert(anchor_state.genesis_time + network_spec().seconds_per_slot * anchor_state.slot)?;
+    db.time_provider().insert(
+        anchor_state.genesis_time + beacon_network_spec().seconds_per_slot * anchor_state.slot,
+    )?;
     db.genesis_time_provider()
         .insert(anchor_state.genesis_time)?;
     db.justified_checkpoint_provider()

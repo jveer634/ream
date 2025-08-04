@@ -58,7 +58,7 @@ use ream_consensus_misc::{
     validator::Validator,
 };
 use ream_merkle::{generate_proof, is_valid_merkle_branch, merkle_tree};
-use ream_network_spec::networks::network_spec;
+use ream_network_spec::networks::beacon_network_spec;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use ssz_derive::{Decode, Encode};
 use ssz_types::{
@@ -1171,7 +1171,7 @@ impl BeaconState {
 
     pub fn compute_timestamp_at_slot(&self, slot: u64) -> u64 {
         let slots_since_genesis = slot - GENESIS_SLOT;
-        self.genesis_time + slots_since_genesis * network_spec().seconds_per_slot
+        self.genesis_time + slots_since_genesis * beacon_network_spec().seconds_per_slot
     }
 
     pub fn validate_voluntary_exit(

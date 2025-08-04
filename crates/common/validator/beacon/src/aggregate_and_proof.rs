@@ -4,7 +4,7 @@ use ream_consensus_misc::{
     constants::DOMAIN_AGGREGATE_AND_PROOF,
     misc::{compute_domain, compute_epoch_at_slot, compute_signing_root},
 };
-use ream_network_spec::networks::network_spec;
+use ream_network_spec::networks::beacon_network_spec;
 use serde::{Deserialize, Serialize};
 use ssz_derive::{Decode, Encode};
 use tree_hash_derive::TreeHash;
@@ -58,7 +58,7 @@ pub fn sign_aggregate_and_proof(
 ) -> anyhow::Result<BLSSignature> {
     let domain = compute_domain(
         DOMAIN_AGGREGATE_AND_PROOF,
-        Some(network_spec().electra_fork_version),
+        Some(beacon_network_spec().electra_fork_version),
         None,
     );
     let signing_root = compute_signing_root(aggregate_and_proof, domain);

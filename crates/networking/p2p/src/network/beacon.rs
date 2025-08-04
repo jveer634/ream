@@ -36,7 +36,7 @@ use parking_lot::{Mutex, RwLock};
 use ream_consensus_misc::constants::genesis_validators_root;
 use ream_discv5::discovery::{Discovery, DiscoveryOutEvent, QueryType};
 use ream_executor::ReamExecutor;
-use ream_network_spec::networks::network_spec;
+use ream_network_spec::networks::beacon_network_spec;
 use tokio::{
     sync::mpsc::{self, UnboundedReceiver, UnboundedSender},
     time::interval,
@@ -456,6 +456,7 @@ impl Network {
                     Direction::Outbound,
                     None,
                 );
+                self.peers_to_ping.remove(&peer_id);
                 None
             }
             // We only handle this for incoming connections
@@ -479,10 +480,24 @@ impl Network {
                         self.network_state.meta_data.read().seq_number,
                     ));
                     self.send_request(peer_id, ping_message);
-                    self.peers_to_ping.insert(peer_id);
                 }
 
                 None
+            }
+            SwarmEvent::ConnectionClosed {
+                peer_id,
+                num_established,
+                ..
+            } => {
+                if num_established == 0 {
+                    self.network_state
+                        .update_peer_state(peer_id, ConnectionState::Disconnected);
+                    self.peers_to_ping.remove(&peer_id);
+                    trace!("Peer {peer_id} connection closed. Removed from peers_to_ping.");
+                    Some(ReamNetworkEvent::PeerDisconnected(peer_id))
+                } else {
+                    None
+                }
             }
             SwarmEvent::Behaviour(behaviour_event) => match behaviour_event {
                 ReamBehaviourEvent::Identify(_) => None,
@@ -553,7 +568,6 @@ impl Network {
                     Direction::Outbound,
                     Some(enr.clone()),
                 );
-                self.peers_to_ping.insert_at(peer_id, Duration::ZERO);
             }
         }
     }
@@ -748,7 +762,7 @@ impl Network {
     fn handle_status_req_resp_event(&mut self, peer_id: PeerId, status: Status) {
         if self.network_state.peer_table.read().get(&peer_id).is_some() {
             // We only want to have peers on the same network as us
-            let fork_digest = network_spec().fork_digest(genesis_validators_root());
+            let fork_digest = beacon_network_spec().fork_digest(genesis_validators_root());
             if status.fork_digest != fork_digest {
                 warn!(
                     "Peer {peer_id} is not on the same network as us, removing from peer table, fork_digest: {}, our fork_digest: {fork_digest}",
@@ -764,6 +778,7 @@ impl Network {
                         cached_peer.state = ConnectionState::Connected;
                         cached_peer.status = Some(status);
                     });
+                self.peers_to_ping.insert(peer_id);
             }
         }
     }
@@ -889,7 +904,7 @@ mod tests {
             executor,
             &config,
             Status {
-                fork_digest: network_spec().fork_digest(genesis_validators_root()),
+                fork_digest: beacon_network_spec().fork_digest(genesis_validators_root()),
                 ..Default::default()
             },
         )

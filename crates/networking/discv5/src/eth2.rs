@@ -1,7 +1,7 @@
 use alloy_primitives::{B256, Bytes, aliases::B32, bytes};
 use alloy_rlp::{Decodable, Encodable};
 use ream_consensus_misc::{constants::FAR_FUTURE_EPOCH, fork_data::ForkData};
-use ream_network_spec::networks::network_spec;
+use ream_network_spec::networks::beacon_network_spec;
 use ssz::{Decode, Encode};
 use ssz_derive::{Decode, Encode};
 
@@ -16,7 +16,7 @@ pub struct EnrForkId {
 
 impl EnrForkId {
     pub fn electra(genesis_validators_root: B256) -> Self {
-        let current_fork_version = network_spec().electra_fork_version;
+        let current_fork_version = beacon_network_spec().electra_fork_version;
         let next_fork_version = current_fork_version;
         let next_fork_epoch = FAR_FUTURE_EPOCH;
 

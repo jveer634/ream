@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use libp2p::gossipsub::{Config, ConfigBuilder, MessageId, ValidationMode};
 use ream_consensus_misc::constants::SLOTS_PER_EPOCH;
-use ream_network_spec::networks::network_spec;
+use ream_network_spec::networks::beacon_network_spec;
 use sha2::{Digest, Sha256};
 
 use super::topics::GossipTopic;
@@ -29,7 +29,7 @@ impl Default for GossipsubConfig {
             .history_gossip(3)
             .max_messages_per_rpc(Some(500))
             .duplicate_cache_time(Duration::from_secs(
-                SLOTS_PER_EPOCH * network_spec().seconds_per_slot * 2,
+                SLOTS_PER_EPOCH * beacon_network_spec().seconds_per_slot * 2,
             ))
             .validate_messages()
             .validation_mode(ValidationMode::Anonymous)

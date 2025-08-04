@@ -26,9 +26,9 @@ use ream_consensus_misc::{
 };
 use ream_executor::ReamExecutor;
 use ream_keystore::keystore::Keystore;
-use ream_network_spec::networks::network_spec;
+use ream_network_spec::networks::beacon_network_spec;
 use reqwest::Url;
-use tokio::time::{Instant, MissedTickBehavior, interval_at};
+use tokio::time::{Instant, MissedTickBehavior, interval_at, sleep};
 use tracing::{error, info, warn};
 use tree_hash::TreeHash;
 
@@ -112,10 +112,11 @@ impl ValidatorService {
     }
 
     pub async fn start(mut self) {
-        let seconds_per_slot = network_spec().seconds_per_slot;
+        let seconds_per_slot = beacon_network_spec().seconds_per_slot;
         let seconds_per_interval = seconds_per_slot / INTERVALS_PER_SLOT;
 
-        let genesis_instant = UNIX_EPOCH + Duration::from_secs(network_spec().min_genesis_time);
+        let genesis_instant =
+            UNIX_EPOCH + Duration::from_secs(beacon_network_spec().min_genesis_time);
         let elapsed = SystemTime::now()
             .duration_since(genesis_instant)
             .expect("System Time is before the genesis time");
@@ -461,7 +462,7 @@ impl ValidatorService {
     ) -> anyhow::Result<()> {
         let domain = compute_domain(
             DOMAIN_SYNC_COMMITTEE,
-            Some(network_spec().electra_fork_version),
+            Some(beacon_network_spec().electra_fork_version),
             None,
         );
         let beacon_block_root = self
@@ -504,6 +505,11 @@ impl ValidatorService {
         validator_index: u64,
         committee_index: u64,
     ) -> anyhow::Result<()> {
+        sleep(Duration::from_secs(
+            beacon_network_spec().seconds_per_slot / 3,
+        ))
+        .await;
+
         let Some(keystore) = self.validator_index_to_keystore.get(&validator_index) else {
             bail!("Keystore not found for validator: {validator_index}");
         };

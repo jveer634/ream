@@ -15,7 +15,7 @@ use ream_consensus_misc::{
     },
     misc::{compute_domain, compute_epoch_at_slot, compute_signing_root, get_committee_indices},
 };
-use ream_network_spec::networks::network_spec;
+use ream_network_spec::networks::beacon_network_spec;
 use ssz_types::{
     BitList, BitVector,
     typenum::{U64, U131072},
@@ -51,7 +51,7 @@ pub fn compute_subnet_for_attestation(
 ) -> u64 {
     let slots_since_epoch_start = slot % SLOTS_PER_EPOCH;
     let committee_since_epoch_start = committees_per_slot * slots_since_epoch_start;
-    (committee_since_epoch_start + committee_index) % network_spec().attestation_subnet_count
+    (committee_since_epoch_start + committee_index) % beacon_network_spec().attestation_subnet_count
 }
 
 pub fn compute_on_chain_aggregate(mut aggregates: Vec<Attestation>) -> anyhow::Result<Attestation> {
@@ -131,7 +131,7 @@ pub fn sign_attestation_data(
 ) -> anyhow::Result<BLSSignature> {
     let domain = compute_domain(
         DOMAIN_BEACON_ATTESTER,
-        Some(network_spec().electra_fork_version),
+        Some(beacon_network_spec().electra_fork_version),
         None,
     );
     let signing_root = compute_signing_root(attestation_data, domain);
@@ -141,7 +141,7 @@ pub fn sign_attestation_data(
 pub fn get_selection_proof(slot: u64, private_key: &PrivateKey) -> anyhow::Result<BLSSignature> {
     let domain = compute_domain(
         DOMAIN_SELECTION_PROOF,
-        Some(network_spec().electra_fork_version),
+        Some(beacon_network_spec().electra_fork_version),
         None,
     );
     let signing_root = compute_signing_root(slot, domain);

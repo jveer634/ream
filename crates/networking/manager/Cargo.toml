@@ -9,6 +9,10 @@ repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
 
+[features]
+default = []
+disable_ancestor_validation = []
+
 [dependencies]
 alloy-primitives.workspace = true
 anyhow.workspace = true
@@ -22,8 +26,8 @@ tree_hash.workspace = true
 url.workspace = true
 
 # ream dependencies
-ream-beacon-chain.workspace = true
 ream-bls.workspace = true
+ream-chain-beacon.workspace = true
 ream-consensus-beacon.workspace = true
 ream-consensus-misc.workspace = true
 ream-discv5.workspace = true

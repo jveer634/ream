@@ -3,7 +3,7 @@ use std::{net::IpAddr, path::PathBuf, sync::Arc};
 use clap::Parser;
 use ream_consensus_misc::checkpoint::Checkpoint;
 use ream_network_manager::config::ManagerConfig;
-use ream_network_spec::{cli::network_parser, networks::NetworkSpec};
+use ream_network_spec::{cli::beacon_network_parser, networks::BeaconNetworkSpec};
 use ream_p2p::bootnodes::Bootnodes;
 use url::Url;
 
@@ -23,9 +23,9 @@ pub struct BeaconNodeConfig {
       long,
       help = "Choose mainnet, holesky, sepolia, hoodi, dev or provide a path to a YAML config file",
       default_value = DEFAULT_NETWORK,
-      value_parser = network_parser
+      value_parser = beacon_network_parser
   )]
-    pub network: Arc<NetworkSpec>,
+    pub network: Arc<BeaconNetworkSpec>,
 
     #[arg(long, help = "Set HTTP address", default_value_t = DEFAULT_HTTP_ADDRESS)]
     pub http_address: IpAddr,

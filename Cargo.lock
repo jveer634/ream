@@ -1066,6 +1066,8 @@ version = "0.1.0"
 dependencies = [
  "alloy-primitives",
  "anyhow",
+ "ethereum_ssz",
+ "ethereum_ssz_derive",
  "ream-beacon-api-types",
  "ream-consensus-beacon",
  "ream-consensus-misc",
@@ -2558,6 +2560,27 @@ name = "glob"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a8d1add55171497b4705a648c6b583acafb01d58050a51727785f0b2c8e0a2b2"
+
+[[package]]
+name = "gossip-validation"
+version = "0.1.0"
+dependencies = [
+ "alloy-primitives",
+ "anyhow",
+ "ethereum_ssz",
+ "ethereum_ssz_derive",
+ "ream-chain-beacon",
+ "ream-consensus-beacon",
+ "ream-consensus-misc",
+ "ream-network-manager",
+ "ream-network-spec",
+ "ream-operation-pool",
+ "ream-storage",
+ "serde",
+ "serde_json",
+ "snap",
+ "tokio",
+]
 
 [[package]]
 name = "group"
@@ -5137,6 +5160,7 @@ dependencies = [
  "hashbrown 0.15.3",
  "rand 0.8.5",
  "ream-account-manager",
+ "ream-beacon-api-types",
  "ream-checkpoint-sync",
  "ream-consensus-beacon",
  "ream-consensus-misc",
@@ -5191,26 +5215,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ream-beacon-chain"
-version = "0.1.0"
-dependencies = [
- "alloy-primitives",
- "anyhow",
- "ethereum_ssz",
- "ethereum_ssz_derive",
- "ream-consensus-beacon",
- "ream-consensus-misc",
- "ream-execution-engine",
- "ream-fork-choice",
- "ream-network-spec",
- "ream-operation-pool",
- "ream-p2p",
- "ream-storage",
- "tokio",
- "tracing",
-]
-
-[[package]]
 name = "ream-bls"
 version = "0.1.0"
 dependencies = [
@@ -5227,6 +5231,26 @@ dependencies = [
  "thiserror 2.0.12",
  "tree_hash",
  "tree_hash_derive",
+]
+
+[[package]]
+name = "ream-chain-beacon"
+version = "0.1.0"
+dependencies = [
+ "alloy-primitives",
+ "anyhow",
+ "ethereum_ssz",
+ "ethereum_ssz_derive",
+ "ream-consensus-beacon",
+ "ream-consensus-misc",
+ "ream-execution-engine",
+ "ream-fork-choice",
+ "ream-network-spec",
+ "ream-operation-pool",
+ "ream-p2p",
+ "ream-storage",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]
@@ -5454,8 +5478,8 @@ dependencies = [
  "ethereum_ssz",
  "ethereum_ssz_derive",
  "libp2p",
- "ream-beacon-chain",
  "ream-bls",
+ "ream-chain-beacon",
  "ream-consensus-beacon",
  "ream-consensus-misc",
  "ream-discv5",
@@ -5660,8 +5684,8 @@ dependencies = [
  "libp2p",
  "libp2p-identity",
  "libp2p-mplex",
- "ream-beacon-chain",
  "ream-bls",
+ "ream-chain-beacon",
  "ream-consensus-beacon",
  "ream-consensus-misc",
  "ream-executor",

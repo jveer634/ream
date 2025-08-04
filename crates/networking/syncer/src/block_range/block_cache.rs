@@ -9,7 +9,7 @@ use ream_consensus_beacon::{
     blob_sidecar::{BlobIdentifier, BlobSidecar},
     electra::beacon_block::SignedBeaconBlock,
 };
-use ream_network_spec::networks::network_spec;
+use ream_network_spec::networks::beacon_network_spec;
 use ssz::Encode;
 use tree_hash::TreeHash;
 
@@ -224,7 +224,7 @@ impl BlockCache {
     }
 
     fn get_missing_blob_identifiers(&self) -> Vec<BlobIdentifier> {
-        let slot_17_days_ago = network_spec().slot_n_days_ago(17);
+        let slot_17_days_ago = beacon_network_spec().slot_n_days_ago(17);
         let mut missing_roots = Vec::new();
         for block in self.blocks_and_blobs.values() {
             if block.block.message.slot < slot_17_days_ago {

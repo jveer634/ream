@@ -15,7 +15,7 @@ use ream_consensus_beacon::{
     genesis::Genesis,
 };
 use ream_consensus_misc::constants::{WHISTLEBLOWER_REWARD_QUOTIENT, genesis_validators_root};
-use ream_network_spec::networks::network_spec;
+use ream_network_spec::networks::beacon_network_spec;
 use ream_storage::{
     db::ReamDB,
     tables::{Field, Table},
@@ -159,9 +159,9 @@ pub async fn get_beacon_block_from_id(
 #[get("/beacon/genesis")]
 pub async fn get_genesis() -> Result<impl Responder, ApiError> {
     Ok(HttpResponse::Ok().json(DataResponse::new(Genesis {
-        genesis_time: network_spec().min_genesis_time,
+        genesis_time: beacon_network_spec().min_genesis_time,
         genesis_validators_root: genesis_validators_root(),
-        genesis_fork_version: network_spec().genesis_fork_version,
+        genesis_fork_version: beacon_network_spec().genesis_fork_version,
     })))
 }
 

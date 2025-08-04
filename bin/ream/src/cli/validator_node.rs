@@ -2,7 +2,7 @@ use std::{net::IpAddr, path::PathBuf, sync::Arc, time::Duration};
 
 use alloy_primitives::Address;
 use clap::Parser;
-use ream_network_spec::{cli::network_parser, networks::NetworkSpec};
+use ream_network_spec::{cli::beacon_network_parser, networks::BeaconNetworkSpec};
 use url::Url;
 
 use crate::cli::constants::{
@@ -32,9 +32,9 @@ pub struct ValidatorNodeConfig {
         long,
         help = "Choose mainnet, holesky, sepolia, hoodi, dev or provide a path to a YAML config file",
         default_value = DEFAULT_NETWORK,
-        value_parser = network_parser
+        value_parser = beacon_network_parser
     )]
-    pub network: Arc<NetworkSpec>,
+    pub network: Arc<BeaconNetworkSpec>,
 
     #[arg(long, help = "The directory for importing keystores")]
     pub import_keystores: PathBuf,

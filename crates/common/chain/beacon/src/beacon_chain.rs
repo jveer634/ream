@@ -11,7 +11,7 @@ use ream_fork_choice::{
     handlers::{on_attestation, on_attester_slashing, on_block, on_tick},
     store::Store,
 };
-use ream_network_spec::networks::network_spec;
+use ream_network_spec::networks::beacon_network_spec;
 use ream_operation_pool::OperationPool;
 use ream_p2p::req_resp::messages::status::Status;
 use ream_storage::{
@@ -46,7 +46,7 @@ impl BeaconChain {
             &mut store,
             &signed_block,
             &self.execution_engine,
-            signed_block.message.slot >= network_spec().slot_n_days_ago(17),
+            signed_block.message.slot >= beacon_network_spec().slot_n_days_ago(17),
         )
         .await?;
         Ok(())
@@ -112,7 +112,7 @@ impl BeaconChain {
         };
 
         Ok(Status {
-            fork_digest: network_spec().fork_digest(genesis_validators_root()),
+            fork_digest: beacon_network_spec().fork_digest(genesis_validators_root()),
             finalized_root: finalized_checkpoint.root,
             finalized_epoch: finalized_checkpoint.epoch,
             head_root,

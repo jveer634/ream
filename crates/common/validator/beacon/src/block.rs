@@ -8,7 +8,7 @@ use ream_consensus_misc::{
     constants::DOMAIN_BEACON_PROPOSER,
     misc::{compute_domain, compute_epoch_at_slot, compute_signing_root},
 };
-use ream_network_spec::networks::network_spec;
+use ream_network_spec::networks::beacon_network_spec;
 
 pub fn get_block_signature(
     state: &BeaconState,
@@ -31,7 +31,7 @@ pub fn sign_beacon_block(
     let epoch = compute_epoch_at_slot(slot);
     let domain = compute_domain(
         DOMAIN_BEACON_PROPOSER,
-        Some(network_spec().electra_fork_version),
+        Some(beacon_network_spec().electra_fork_version),
         None,
     );
     let signing_root = compute_signing_root(epoch, domain);
@@ -52,7 +52,7 @@ pub fn sign_blinded_beacon_block(
 
     let domain = compute_domain(
         DOMAIN_BEACON_PROPOSER,
-        Some(network_spec().electra_fork_version),
+        Some(beacon_network_spec().electra_fork_version),
         None,
     );
     let signing_root = compute_signing_root(epoch, domain);

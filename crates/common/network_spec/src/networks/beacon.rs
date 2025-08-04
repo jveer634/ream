@@ -17,7 +17,7 @@ pub static HAS_NETWORK_SPEC_BEEN_INITIALIZED: Once = Once::new();
 pub fn initialize_test_network_spec() {
     let _ = GENESIS_VALIDATORS_ROOT.set(B256::ZERO);
     HAS_NETWORK_SPEC_BEEN_INITIALIZED.call_once(|| {
-        set_network_spec(DEV.clone());
+        set_beacon_network_spec(DEV.clone());
     });
 }
 
@@ -47,33 +47,37 @@ impl<'de> Deserialize<'de> for Network {
     }
 }
 
-static NETWORK_SPEC: OnceLock<Arc<NetworkSpec>> = OnceLock::new();
+static BEACON_NETWORK_SPEC: OnceLock<Arc<BeaconNetworkSpec>> = OnceLock::new();
 
-/// MUST be called only once at the start of the application to initialize static [NetworkSpec].
+/// MUST be called only once at the start of the application to initialize static
+/// [BeaconNetworkSpec].
 ///
-/// The static `NetworkSpec` can be accessed using [network_spec].
+/// The static `BeaconNetworkSpec` can be accessed using [beacon_network_spec].
 ///
 /// # Panics
 ///
 /// Panics if this function is called more than once.
-pub fn set_network_spec(network_spec: Arc<NetworkSpec>) {
-    NETWORK_SPEC
+pub fn set_beacon_network_spec(network_spec: Arc<BeaconNetworkSpec>) {
+    BEACON_NETWORK_SPEC
         .set(network_spec)
-        .expect("NetworkSpec should be set only once at the start of the application");
+        .expect("BeaconNetworkSpec should be set only once at the start of the application");
 }
 
-/// Returns the static [NetworkSpec] initialized by [set_network_spec].
+/// Returns the static [BeaconNetworkSpec] initialized by [set_beacon_network_spec].
 ///
 /// # Panics
 ///
-/// Panics if [set_network_spec] wasn't called before this function.
-pub fn network_spec() -> Arc<NetworkSpec> {
-    NETWORK_SPEC.get().expect("NetworkSpec wasn't set").clone()
+/// Panics if [set_beacon_network_spec] wasn't called before this function.
+pub fn beacon_network_spec() -> Arc<BeaconNetworkSpec> {
+    BEACON_NETWORK_SPEC
+        .get()
+        .expect("BeaconNetworkSpec wasn't set")
+        .clone()
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize)]
 #[serde(rename_all = "UPPERCASE")]
-pub struct NetworkSpec {
+pub struct BeaconNetworkSpec {
     pub preset_base: String,
     #[serde(rename = "CONFIG_NAME")]
     pub network: Network,
@@ -167,7 +171,7 @@ pub struct NetworkSpec {
     pub max_request_blob_sidecars_electra: u64,
 }
 
-impl NetworkSpec {
+impl BeaconNetworkSpec {
     pub fn fork_digest(&self, genesis_validators_root: B256) -> B32 {
         ForkData {
             current_version: self.electra_fork_version,
@@ -224,8 +228,8 @@ impl NetworkSpec {
     }
 }
 
-pub static MAINNET: LazyLock<Arc<NetworkSpec>> = LazyLock::new(|| {
-    NetworkSpec {
+pub static MAINNET: LazyLock<Arc<BeaconNetworkSpec>> = LazyLock::new(|| {
+    BeaconNetworkSpec {
         preset_base: "mainnet".to_string(),
         network: Network::Mainnet,
         terminal_total_difficulty: U256::from_str("58750000000000000000000")
@@ -293,8 +297,8 @@ pub static MAINNET: LazyLock<Arc<NetworkSpec>> = LazyLock::new(|| {
     .into()
 });
 
-pub static HOLESKY: LazyLock<Arc<NetworkSpec>> = LazyLock::new(|| {
-    NetworkSpec {
+pub static HOLESKY: LazyLock<Arc<BeaconNetworkSpec>> = LazyLock::new(|| {
+    BeaconNetworkSpec {
         preset_base: "mainnet".to_string(),
         network: Network::Holesky,
         terminal_total_difficulty: U256::from_str("58750000000000000000000")
@@ -362,8 +366,8 @@ pub static HOLESKY: LazyLock<Arc<NetworkSpec>> = LazyLock::new(|| {
     .into()
 });
 
-pub static SEPOLIA: LazyLock<Arc<NetworkSpec>> = LazyLock::new(|| {
-    NetworkSpec {
+pub static SEPOLIA: LazyLock<Arc<BeaconNetworkSpec>> = LazyLock::new(|| {
+    BeaconNetworkSpec {
         preset_base: "mainnet".to_string(),
         network: Network::Sepolia,
         terminal_total_difficulty: U256::from_str("58750000000000000000000")
@@ -431,8 +435,8 @@ pub static SEPOLIA: LazyLock<Arc<NetworkSpec>> = LazyLock::new(|| {
     .into()
 });
 
-pub static HOODI: LazyLock<Arc<NetworkSpec>> = LazyLock::new(|| {
-    NetworkSpec {
+pub static HOODI: LazyLock<Arc<BeaconNetworkSpec>> = LazyLock::new(|| {
+    BeaconNetworkSpec {
         preset_base: "mainnet".to_string(),
         network: Network::Hoodi,
         terminal_total_difficulty: U256::from_str("58750000000000000000000")
@@ -500,8 +504,8 @@ pub static HOODI: LazyLock<Arc<NetworkSpec>> = LazyLock::new(|| {
     .into()
 });
 
-pub static DEV: LazyLock<Arc<NetworkSpec>> = LazyLock::new(|| {
-    NetworkSpec {
+pub static DEV: LazyLock<Arc<BeaconNetworkSpec>> = LazyLock::new(|| {
+    BeaconNetworkSpec {
         preset_base: "mainnet".to_string(),
         network: Network::Dev,
         terminal_total_difficulty: U256::from_str("58750000000000000000000")

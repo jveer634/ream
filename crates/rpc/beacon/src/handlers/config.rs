@@ -6,7 +6,7 @@ use ream_beacon_api_types::{error::ApiError, responses::DataResponse};
 use ream_consensus_misc::constants::{
     DOMAIN_AGGREGATE_AND_PROOF, INACTIVITY_PENALTY_QUOTIENT_BELLATRIX,
 };
-use ream_network_spec::networks::{NetworkSpec, network_spec};
+use ream_network_spec::networks::{BeaconNetworkSpec, beacon_network_spec};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Default)]
@@ -33,8 +33,8 @@ pub struct SpecConfig {
     inactivity_penalty_quotient: u64,
 }
 
-impl From<Arc<NetworkSpec>> for SpecConfig {
-    fn from(network_spec: Arc<NetworkSpec>) -> Self {
+impl From<Arc<BeaconNetworkSpec>> for SpecConfig {
+    fn from(network_spec: Arc<BeaconNetworkSpec>) -> Self {
         Self {
             deposit_contract_address: network_spec.deposit_contract_address,
             deposit_network_id: network_spec.deposit_chain_id,
@@ -47,13 +47,13 @@ impl From<Arc<NetworkSpec>> for SpecConfig {
 /// Called by `config/spec` to get specification configuration.
 #[get("config/spec")]
 pub async fn get_config_spec() -> Result<impl Responder, ApiError> {
-    Ok(HttpResponse::Ok().json(DataResponse::new(SpecConfig::from(network_spec()))))
+    Ok(HttpResponse::Ok().json(DataResponse::new(SpecConfig::from(beacon_network_spec()))))
 }
 
 /// Called by `/deposit_contract` to get the Genesis Config of Beacon Chain.
 #[get("config/deposit_contract")]
 pub async fn get_config_deposit_contract() -> Result<impl Responder, ApiError> {
-    let network_spec = network_spec();
+    let network_spec = beacon_network_spec();
     Ok(
         HttpResponse::Ok().json(DataResponse::new(DepositContract::new(
             network_spec.deposit_chain_id,
@@ -65,5 +65,5 @@ pub async fn get_config_deposit_contract() -> Result<impl Responder, ApiError> {
 /// Called by `config/fork_schedule` to get fork schedule
 #[get("config/fork_schedule")]
 pub async fn get_fork_schedule() -> Result<impl Responder, ApiError> {
-    Ok(HttpResponse::Ok().json(DataResponse::new(network_spec().fork_schedule())))
+    Ok(HttpResponse::Ok().json(DataResponse::new(beacon_network_spec().fork_schedule())))
 }
