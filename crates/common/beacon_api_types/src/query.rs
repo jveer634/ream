@@ -1,5 +1,6 @@
 use alloy_primitives::B256;
 use ream_bls::BLSSignature;
+use ream_consensus::constants::DEFAULT_BOOST_FACTOR;
 use serde::{Deserialize, Serialize};
 
 use super::id::ValidatorID;
@@ -45,15 +46,6 @@ pub struct StatusQuery {
     pub status: Option<Vec<ValidatorStatus>>,
 }
 
-#[derive(Default, Debug, Deserialize)]
-pub struct ValidatorBlockQuery {
-    pub slot: u64,
-    pub randao_reveal: BLSSignature,
-    pub graffiti: Option<B256>,
-    pub skip_randao_verification: Option<bool>,
-    pub builder_boost_factor: Option<u64>,
-}
-
 impl StatusQuery {
     pub fn has_status(&self) -> bool {
         match &self.status {
@@ -66,6 +58,24 @@ impl StatusQuery {
         match &self.status {
             Some(statuses) => statuses.contains(status),
             None => true, // If no statuses specified, accept all
+        }
+    }
+}
+
+#[derive(Default, Debug, Deserialize)]
+pub struct ValidatorBlockQuery {
+    pub slot: u64,
+    pub randao_reveal: BLSSignature,
+    pub graffiti: Option<B256>,
+    pub skip_randao_verification: Option<bool>,
+    pub builder_boost_factor: Option<u64>,
+}
+
+impl ValidatorBlockQuery {
+    pub fn skip_rando_check(&self) -> bool {
+        match &self.skip_randao_verification {
+            Some(skip_check) => *skip_check,
+            None => false, // flag not set
         }
     }
 }
