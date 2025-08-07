@@ -1,0 +1,17 @@
+[package]
+name = "ream-pqc"
+authors.workspace = true
+edition.workspace = true
+keywords.workspace = true
+license.workspace = true
+readme.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[dependencies]
+ethereum_ssz.workspace = true
+ethereum_ssz_derive.workspace = true
+serde.workspace = true
+tree_hash.workspace = true
+tree_hash_derive.workspace = true

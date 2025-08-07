@@ -4,45 +4,23 @@ pub mod weak_subjectivity;
 use alloy_primitives::B256;
 use anyhow::{anyhow, ensure};
 use checkpoint::get_checkpoint_sync_sources;
-use ream_consensus::{
+use ream_consensus_beacon::{
     blob_sidecar::{BlobIdentifier, BlobSidecar},
-    checkpoint::Checkpoint,
-    constants::SECONDS_PER_SLOT,
     electra::{beacon_block::SignedBeaconBlock, beacon_state::BeaconState},
     execution_engine::rpc_types::get_blobs::BlobAndProofV1,
 };
+use ream_consensus_misc::checkpoint::Checkpoint;
 use ream_fork_choice::{handlers::on_tick, store::get_forkchoice_store};
-use ream_network_spec::networks::network_spec;
+use ream_network_spec::networks::beacon_network_spec;
 use ream_storage::{db::ReamDB, tables::Table};
 use reqwest::{
     Url,
     header::{ACCEPT, HeaderValue},
 };
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use ssz::Decode;
 use tracing::{info, warn};
 use weak_subjectivity::{WeakSubjectivityState, verify_state_from_weak_subjectivity_checkpoint};
-
-/// A OptionalBeaconVersionedResponse data struct that can be used to wrap data type
-/// used for json rpc responses
-///
-/// # Example
-/// {
-///  "data": json!({
-///     "version": Some("electra")
-///     "execution_optimistic" : Some("false"),
-///     "finalized" : None,
-///     "data" : T
-/// })
-/// }
-#[derive(Debug, Serialize, Deserialize)]
-struct OptionalBeaconVersionedResponse<T> {
-    pub version: Option<String>,
-    pub execution_optimistic: Option<Value>,
-    pub finalized: Option<Value>,
-    pub data: T,
-}
 
 /// Entry point for checkpoint sync.
 pub async fn initialize_db_from_checkpoint(
@@ -108,7 +86,8 @@ pub async fn initialize_db_from_checkpoint(
     ensure!(block.message.state_root == state.state_root());
     let mut store = get_forkchoice_store(state.clone(), block.message, db)?;
 
-    let time = network_spec().min_genesis_time + SECONDS_PER_SLOT * (slot + 1);
+    let time = beacon_network_spec().min_genesis_time
+        + beacon_network_spec().seconds_per_slot * (slot + 1);
     on_tick(&mut store, time)?;
     info!("Initial sync complete");
 

@@ -2,14 +2,17 @@ pub mod account_manager;
 pub mod beacon_node;
 pub mod constants;
 pub mod import_keystores;
+pub mod lean_node;
 pub mod validator_node;
+pub mod voluntary_exit;
 
 use clap::{Parser, Subcommand};
 use ream_node::version::FULL_VERSION;
 
 use crate::cli::{
     account_manager::AccountManagerConfig, beacon_node::BeaconNodeConfig,
-    validator_node::ValidatorNodeConfig,
+    lean_node::LeanNodeConfig, validator_node::ValidatorNodeConfig,
+    voluntary_exit::VoluntaryExitConfig,
 };
 
 #[derive(Debug, Parser)]
@@ -21,6 +24,10 @@ pub struct Cli {
 
 #[derive(Debug, Subcommand)]
 pub enum Commands {
+    /// Start the lean node
+    #[command(name = "lean_node")]
+    LeanNode(Box<LeanNodeConfig>),
+
     /// Start the beacon node
     #[command(name = "beacon_node")]
     BeaconNode(Box<BeaconNodeConfig>),
@@ -32,6 +39,10 @@ pub enum Commands {
     /// Manage validator accounts
     #[command(name = "account_manager")]
     AccountManager(Box<AccountManagerConfig>),
+
+    /// Perform voluntary exit for a validator
+    #[command(name = "voluntary_exit")]
+    VoluntaryExit(Box<VoluntaryExitConfig>),
 }
 
 #[cfg(test)]
@@ -46,6 +57,25 @@ mod tests {
 
     use super::*;
     use crate::cli::constants::DEFAULT_BEACON_API_ENDPOINT;
+
+    #[test]
+    fn test_cli_lean_node_command() {
+        let cli = Cli::parse_from([
+            "program",
+            "lean_node",
+            "--verbosity",
+            "2",
+            "--network",
+            "./assets/lean/sample_spec.yml",
+        ]);
+
+        match cli.command {
+            Commands::LeanNode(config) => {
+                assert_eq!(config.verbosity, 2);
+            }
+            _ => unreachable!("This test should only validate the lean node cli"),
+        }
+    }
 
     #[test]
     fn test_cli_beacon_node_command() {

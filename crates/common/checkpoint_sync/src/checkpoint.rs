@@ -1,11 +1,11 @@
-use ream_network_spec::networks::{Network, network_spec};
+use ream_network_spec::networks::{Network, beacon_network_spec};
 use reqwest::Url;
 
 pub fn get_checkpoint_sync_sources(checkpoint_sync_url: Option<Url>) -> Vec<Url> {
     if let Some(checkpoint_sync_url) = checkpoint_sync_url {
         return vec![checkpoint_sync_url];
     }
-    let raw_urls: Vec<String> = match network_spec().network {
+    let raw_urls: Vec<String> = match beacon_network_spec().network {
         Network::Mainnet => serde_yaml::from_str(include_str!(
             "../resources/checkpoint_sync_sources/mainnet.yaml"
         ))

@@ -4,18 +4,18 @@ use std::{
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
-use ream_beacon_chain::beacon_chain::BeaconChain;
+use ream_chain_beacon::beacon_chain::BeaconChain;
 use ream_discv5::{
     config::DiscoveryConfig,
     subnet::{AttestationSubnets, SyncCommitteeSubnets},
 };
 use ream_execution_engine::ExecutionEngine;
 use ream_executor::ReamExecutor;
-use ream_network_spec::networks::network_spec;
+use ream_network_spec::networks::beacon_network_spec;
 use ream_operation_pool::OperationPool;
 use ream_p2p::{
     config::NetworkConfig,
-    network::{Network, ReamNetworkEvent},
+    network::beacon::{Network, ReamNetworkEvent},
     network_state::NetworkState,
 };
 use ream_storage::{cache::CachedDB, db::ReamDB};
@@ -67,7 +67,9 @@ impl NetworkManagerService {
         ))
         .build();
 
-        let bootnodes = config.bootnodes.to_enrs(network_spec().network.clone());
+        let bootnodes = config
+            .bootnodes
+            .to_enrs(beacon_network_spec().network.clone());
         let discv5_config = DiscoveryConfig {
             discv5_config,
             bootnodes,
@@ -148,7 +150,7 @@ impl NetworkManagerService {
             ..
         } = self;
 
-        let mut interval = interval(Duration::from_secs(network_spec().seconds_per_slot));
+        let mut interval = interval(Duration::from_secs(beacon_network_spec().seconds_per_slot));
         let mut syncer_handle = block_range_syncer.start();
         loop {
             tokio::select! {

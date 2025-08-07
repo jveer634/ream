@@ -1066,8 +1066,11 @@ version = "0.1.0"
 dependencies = [
  "alloy-primitives",
  "anyhow",
+ "ethereum_ssz",
+ "ethereum_ssz_derive",
  "ream-beacon-api-types",
- "ream-consensus",
+ "ream-consensus-beacon",
+ "ream-consensus-misc",
  "serde",
  "serde_json",
  "tokio",
@@ -2032,7 +2035,8 @@ dependencies = [
  "ethereum_ssz_derive",
  "paste",
  "ream-bls",
- "ream-consensus",
+ "ream-consensus-beacon",
+ "ream-consensus-misc",
  "ream-fork-choice",
  "ream-merkle",
  "ream-network-spec",
@@ -2556,6 +2560,27 @@ name = "glob"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a8d1add55171497b4705a648c6b583acafb01d58050a51727785f0b2c8e0a2b2"
+
+[[package]]
+name = "gossip-validation"
+version = "0.1.0"
+dependencies = [
+ "alloy-primitives",
+ "anyhow",
+ "ethereum_ssz",
+ "ethereum_ssz_derive",
+ "ream-chain-beacon",
+ "ream-consensus-beacon",
+ "ream-consensus-misc",
+ "ream-network-manager",
+ "ream-network-spec",
+ "ream-operation-pool",
+ "ream-storage",
+ "serde",
+ "serde_json",
+ "snap",
+ "tokio",
+]
 
 [[package]]
 name = "group"
@@ -5135,8 +5160,10 @@ dependencies = [
  "hashbrown 0.15.3",
  "rand 0.8.5",
  "ream-account-manager",
+ "ream-beacon-api-types",
  "ream-checkpoint-sync",
- "ream-consensus",
+ "ream-consensus-beacon",
+ "ream-consensus-misc",
  "ream-discv5",
  "ream-executor",
  "ream-keystore",
@@ -5145,9 +5172,10 @@ dependencies = [
  "ream-node",
  "ream-operation-pool",
  "ream-p2p",
- "ream-rpc",
+ "ream-rpc-beacon",
  "ream-storage",
- "ream-validator",
+ "ream-validator-beacon",
+ "ream-validator-lean",
  "tokio",
  "tracing",
  "tracing-subscriber",
@@ -5177,32 +5205,13 @@ dependencies = [
  "ethereum_ssz",
  "ethereum_ssz_derive",
  "ream-bls",
- "ream-consensus",
+ "ream-consensus-beacon",
+ "ream-consensus-misc",
  "reqwest",
  "serde",
  "serde_json",
  "thiserror 2.0.12",
  "url",
-]
-
-[[package]]
-name = "ream-beacon-chain"
-version = "0.1.0"
-dependencies = [
- "alloy-primitives",
- "anyhow",
- "ethereum_ssz",
- "ethereum_ssz_derive",
- "ream-bls",
- "ream-consensus",
- "ream-execution-engine",
- "ream-fork-choice",
- "ream-network-spec",
- "ream-operation-pool",
- "ream-p2p",
- "ream-storage",
- "tokio",
- "tracing",
 ]
 
 [[package]]
@@ -5225,6 +5234,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "ream-chain-beacon"
+version = "0.1.0"
+dependencies = [
+ "alloy-primitives",
+ "anyhow",
+ "ethereum_ssz",
+ "ethereum_ssz_derive",
+ "ream-consensus-beacon",
+ "ream-consensus-misc",
+ "ream-execution-engine",
+ "ream-fork-choice",
+ "ream-network-spec",
+ "ream-operation-pool",
+ "ream-p2p",
+ "ream-storage",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "ream-checkpoint-sync"
 version = "0.1.0"
 dependencies = [
@@ -5232,7 +5261,8 @@ dependencies = [
  "anyhow",
  "ethereum_ssz",
  "ethereum_ssz_derive",
- "ream-consensus",
+ "ream-consensus-beacon",
+ "ream-consensus-misc",
  "ream-fork-choice",
  "ream-network-spec",
  "ream-storage",
@@ -5245,7 +5275,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "ream-consensus"
+name = "ream-consensus-beacon"
 version = "0.1.0"
 dependencies = [
  "alloy-consensus",
@@ -5259,12 +5289,50 @@ dependencies = [
  "ethereum_ssz_derive",
  "itertools 0.14.0",
  "ream-bls",
+ "ream-consensus-misc",
  "ream-merkle",
+ "ream-network-spec",
  "serde",
  "serde_json",
  "serde_yaml",
  "sha2 0.10.8",
  "snap",
+ "ssz_types",
+ "thiserror 2.0.12",
+ "tracing",
+ "tree_hash",
+ "tree_hash_derive",
+]
+
+[[package]]
+name = "ream-consensus-lean"
+version = "0.1.0"
+dependencies = [
+ "alloy-primitives",
+ "ethereum_ssz",
+ "ethereum_ssz_derive",
+ "ream-pqc",
+ "serde",
+ "ssz_types",
+ "tree_hash",
+ "tree_hash_derive",
+]
+
+[[package]]
+name = "ream-consensus-misc"
+version = "0.1.0"
+dependencies = [
+ "alloy-primitives",
+ "alloy-rlp",
+ "anyhow",
+ "ethereum_hashing",
+ "ethereum_serde_utils",
+ "ethereum_ssz",
+ "ethereum_ssz_derive",
+ "ream-bls",
+ "serde",
+ "serde_json",
+ "sha2 0.10.8",
  "ssz_types",
  "thiserror 2.0.12",
  "tree_hash",
@@ -5284,7 +5352,7 @@ dependencies = [
  "futures",
  "libp2p",
  "rand 0.8.5",
- "ream-consensus",
+ "ream-consensus-misc",
  "ream-network-spec",
  "ssz_types",
  "tokio",
@@ -5304,7 +5372,8 @@ dependencies = [
  "ethereum_ssz",
  "ethereum_ssz_derive",
  "jsonwebtoken",
- "ream-consensus",
+ "ream-consensus-beacon",
+ "ream-consensus-misc",
  "reqwest",
  "serde",
  "serde_json",
@@ -5341,7 +5410,9 @@ dependencies = [
  "itertools 0.14.0",
  "kzg",
  "ream-bls",
- "ream-consensus",
+ "ream-consensus-beacon",
+ "ream-consensus-misc",
+ "ream-network-spec",
  "ream-operation-pool",
  "ream-polynomial-commitments",
  "ream-storage",
@@ -5351,6 +5422,7 @@ dependencies = [
  "serde_yaml",
  "ssz_types",
  "thiserror 2.0.12",
+ "tracing",
  "tree_hash",
  "tree_hash_derive",
 ]
@@ -5378,7 +5450,8 @@ dependencies = [
  "ethereum_serde_utils",
  "ethereum_ssz",
  "ethereum_ssz_derive",
- "ream-consensus",
+ "ream-consensus-beacon",
+ "ream-consensus-misc",
  "serde",
  "ssz_types",
  "tree_hash",
@@ -5405,8 +5478,10 @@ dependencies = [
  "ethereum_ssz",
  "ethereum_ssz_derive",
  "libp2p",
- "ream-beacon-chain",
- "ream-consensus",
+ "ream-bls",
+ "ream-chain-beacon",
+ "ream-consensus-beacon",
+ "ream-consensus-misc",
  "ream-discv5",
  "ream-execution-engine",
  "ream-executor",
@@ -5414,8 +5489,10 @@ dependencies = [
  "ream-network-spec",
  "ream-operation-pool",
  "ream-p2p",
+ "ream-polynomial-commitments",
  "ream-storage",
  "ream-syncer",
+ "ream-validator-beacon",
  "tokio",
  "tracing",
  "tree_hash",
@@ -5429,7 +5506,7 @@ dependencies = [
  "alloy-primitives",
  "anyhow",
  "ethereum_serde_utils",
- "ream-consensus",
+ "ream-consensus-misc",
  "serde",
  "serde_yaml",
 ]
@@ -5448,7 +5525,8 @@ version = "0.1.0"
 dependencies = [
  "alloy-primitives",
  "parking_lot",
- "ream-consensus",
+ "ream-consensus-beacon",
+ "ream-consensus-misc",
  "tree_hash",
 ]
 
@@ -5470,12 +5548,13 @@ dependencies = [
  "libp2p-identity",
  "libp2p-mplex",
  "parking_lot",
- "ream-consensus",
+ "ream-consensus-beacon",
+ "ream-consensus-misc",
  "ream-discv5",
  "ream-executor",
  "ream-light-client",
  "ream-network-spec",
- "ream-validator",
+ "ream-validator-beacon",
  "serde",
  "serde_yaml",
  "sha2 0.10.8",
@@ -5506,7 +5585,8 @@ dependencies = [
  "itertools 0.14.0",
  "kzg",
  "ream-bls",
- "ream-consensus",
+ "ream-consensus-beacon",
+ "ream-consensus-misc",
  "rust-kzg-blst",
  "serde",
  "serde_json",
@@ -5518,7 +5598,18 @@ dependencies = [
 ]
 
 [[package]]
-name = "ream-rpc"
+name = "ream-pqc"
+version = "0.1.0"
+dependencies = [
+ "ethereum_ssz",
+ "ethereum_ssz_derive",
+ "serde",
+ "tree_hash",
+ "tree_hash_derive",
+]
+
+[[package]]
+name = "ream-rpc-beacon"
 version = "0.1.0"
 dependencies = [
  "actix-web",
@@ -5533,7 +5624,8 @@ dependencies = [
  "parking_lot",
  "ream-beacon-api-types",
  "ream-bls",
- "ream-consensus",
+ "ream-consensus-beacon",
+ "ream-consensus-misc",
  "ream-execution-engine",
  "ream-fork-choice",
  "ream-light-client",
@@ -5551,6 +5643,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "ream-rpc-lean"
+version = "0.1.0"
+
+[[package]]
 name = "ream-runtime"
 version = "0.1.0"
 
@@ -5564,7 +5660,8 @@ dependencies = [
  "ethereum_ssz",
  "lru 0.15.0",
  "ream-bls",
- "ream-consensus",
+ "ream-consensus-beacon",
+ "ream-consensus-misc",
  "redb",
  "snap",
  "ssz_types",
@@ -5587,9 +5684,10 @@ dependencies = [
  "libp2p",
  "libp2p-identity",
  "libp2p-mplex",
- "ream-beacon-chain",
  "ream-bls",
- "ream-consensus",
+ "ream-chain-beacon",
+ "ream-consensus-beacon",
+ "ream-consensus-misc",
  "ream-executor",
  "ream-network-spec",
  "ream-p2p",
@@ -5600,7 +5698,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "ream-validator"
+name = "ream-validator-beacon"
 version = "0.1.0"
 dependencies = [
  "alloy-primitives",
@@ -5614,7 +5712,8 @@ dependencies = [
  "futures",
  "ream-beacon-api-types",
  "ream-bls",
- "ream-consensus",
+ "ream-consensus-beacon",
+ "ream-consensus-misc",
  "ream-execution-engine",
  "ream-executor",
  "ream-keystore",
@@ -5629,6 +5728,13 @@ dependencies = [
  "tree_hash",
  "tree_hash_derive",
  "url",
+]
+
+[[package]]
+name = "ream-validator-lean"
+version = "0.1.0"
+dependencies = [
+ "tracing",
 ]
 
 [[package]]
