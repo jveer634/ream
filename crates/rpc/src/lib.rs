@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use actix_web::{App, HttpServer, dev::ServerHandle, middleware, web::Data};
 use config::RpcServerConfig;
+use ream_cache::SharedCache;
 use ream_execution_engine::ExecutionEngine;
 use ream_operation_pool::OperationPool;
 use ream_p2p::network_state::NetworkState;
@@ -21,6 +22,7 @@ pub async fn start_server(
     network_state: Arc<NetworkState>,
     operation_pool: Arc<OperationPool>,
     execution_engine: Option<ExecutionEngine>,
+    cache: SharedCache,
 ) -> std::io::Result<()> {
     info!(
         "starting HTTP server on {:?}",
@@ -38,6 +40,7 @@ pub async fn start_server(
             .app_data(Data::new(network_state.clone()))
             .app_data(Data::new(operation_pool.clone()))
             .app_data(Data::new(execution_engine.clone()))
+            .app_data(Data::new(cache.clone()))
             .configure(register_routers)
     })
     .bind(server_config.http_socket_address)?

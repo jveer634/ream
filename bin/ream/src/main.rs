@@ -8,6 +8,7 @@ use ream::cli::{
     import_keystores::{load_keystore_directory, load_password_file, process_password},
     validator_node::ValidatorNodeConfig,
 };
+use ream_cache::{SharedCache, new_cache_service};
 use ream_checkpoint_sync::initialize_db_from_checkpoint;
 use ream_consensus::constants::set_genesis_validator_root;
 use ream_executor::ReamExecutor;
@@ -40,16 +41,19 @@ fn main() {
     tracing_subscriber::fmt().with_env_filter(env_filter).init();
 
     let cli = Cli::parse();
+    let cache: SharedCache = new_cache_service();
 
     let executor = ReamExecutor::new().expect("unable to create executor");
     let executor_clone = executor.clone();
 
     match cli.command {
         Commands::BeaconNode(config) => {
-            executor_clone.spawn(async move { run_beacon_node(*config, executor).await });
+            executor_clone
+                .spawn(async move { run_beacon_node(*config, executor, cache.clone()).await });
         }
         Commands::ValidatorNode(config) => {
-            executor_clone.spawn(async move { run_validator_node(*config, executor).await });
+            executor_clone
+                .spawn(async move { run_validator_node(*config, executor, cache.clone()).await });
         }
         Commands::AccountManager(config) => {
             executor_clone.spawn(async move { run_account_manager(*config).await });
@@ -77,7 +81,7 @@ fn main() {
 /// At the end of setup, it starts 2 services:
 /// 1. The HTTP server that serves Beacon API, Engine API.
 /// 2. The P2P network that handles peer discovery (discv5), gossiping (gossipsub) and Req/Resp API.
-pub async fn run_beacon_node(config: BeaconNodeConfig, executor: ReamExecutor) {
+pub async fn run_beacon_node(config: BeaconNodeConfig, executor: ReamExecutor, cache: SharedCache) {
     info!("starting up beacon node...");
 
     set_network_spec(config.network.clone());
@@ -125,6 +129,12 @@ pub async fn run_beacon_node(config: BeaconNodeConfig, executor: ReamExecutor) {
         config.http_allow_origin,
     );
 
+    // note: tbd
+    // cache.put(
+    //     "sugggested_fee_recipient".to_string(),
+    //     config.suggested_fee_recipient.to_string(),
+    // );
+
     let network_manager = NetworkManagerService::new(
         executor.clone(),
         config.into(),
@@ -150,6 +160,7 @@ pub async fn run_beacon_node(config: BeaconNodeConfig, executor: ReamExecutor) {
             network_state,
             operation_pool,
             execution_engine,
+            cache,
         )
         .await
     });
@@ -169,7 +180,11 @@ pub async fn run_beacon_node(config: BeaconNodeConfig, executor: ReamExecutor) {
 /// This function initializes the validator node by setting up the network specification,
 /// loading the keystores, and creating a validator service.
 /// It also starts the validator service.
-pub async fn run_validator_node(config: ValidatorNodeConfig, executor: ReamExecutor) {
+pub async fn run_validator_node(
+    config: ValidatorNodeConfig,
+    executor: ReamExecutor,
+    cache: SharedCache,
+) {
     info!("starting up validator node...");
 
     set_network_spec(config.network.clone());
@@ -193,6 +208,14 @@ pub async fn run_validator_node(config: ValidatorNodeConfig, executor: ReamExecu
                 .expect("Could not decrypt a keystore")
         })
         .collect::<Vec<_>>();
+
+    {
+        let mut cache_lock = cache.write().unwrap();
+        cache_lock.put(
+            "suggested_fee_recipient".to_string(),
+            config.suggested_fee_recipient.to_string(),
+        );
+    }
 
     let validator_service = ValidatorService::new(
         key_stores,
