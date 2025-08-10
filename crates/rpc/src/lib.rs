@@ -22,7 +22,7 @@ pub async fn start_server(
     network_state: Arc<NetworkState>,
     operation_pool: Arc<OperationPool>,
     execution_engine: Option<ExecutionEngine>,
-    cache: SharedCache,
+    cache: Arc<SharedCache>,
 ) -> std::io::Result<()> {
     info!(
         "starting HTTP server on {:?}",

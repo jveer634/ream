@@ -41,7 +41,7 @@ fn main() {
     tracing_subscriber::fmt().with_env_filter(env_filter).init();
 
     let cli = Cli::parse();
-    let cache: SharedCache = new_cache_service();
+    let cache = Arc::new(new_cache_service());
 
     let executor = ReamExecutor::new().expect("unable to create executor");
     let executor_clone = executor.clone();
@@ -81,7 +81,11 @@ fn main() {
 /// At the end of setup, it starts 2 services:
 /// 1. The HTTP server that serves Beacon API, Engine API.
 /// 2. The P2P network that handles peer discovery (discv5), gossiping (gossipsub) and Req/Resp API.
-pub async fn run_beacon_node(config: BeaconNodeConfig, executor: ReamExecutor, cache: SharedCache) {
+pub async fn run_beacon_node(
+    config: BeaconNodeConfig,
+    executor: ReamExecutor,
+    cache: Arc<SharedCache>,
+) {
     info!("starting up beacon node...");
 
     set_network_spec(config.network.clone());
@@ -183,7 +187,7 @@ pub async fn run_beacon_node(config: BeaconNodeConfig, executor: ReamExecutor, c
 pub async fn run_validator_node(
     config: ValidatorNodeConfig,
     executor: ReamExecutor,
-    cache: SharedCache,
+    cache: Arc<SharedCache>,
 ) {
     info!("starting up validator node...");
 
