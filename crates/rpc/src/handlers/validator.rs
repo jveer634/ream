@@ -1,11 +1,12 @@
-use std::collections::HashSet;
+use std::{collections::HashSet, str::FromStr, sync::Arc};
 
 use actix_web::{
     HttpResponse, Responder, get, post,
     web::{Data, Json, Path, Query},
 };
+use alloy_primitives::{Address, FixedBytes};
 use ream_beacon_api_types::{
-    block::ProduceBlockResponse,
+    block::ProduceBlockData,
     error::ApiError,
     id::{ID, ValidatorID},
     query::{IdQuery, StatusQuery, ValidatorBlockQuery},
@@ -13,13 +14,21 @@ use ream_beacon_api_types::{
     responses::BeaconResponse,
     validator::{ValidatorBalance, ValidatorData, ValidatorStatus},
 };
-use ream_bls::{BLSSignature, PublicKey};
+use ream_bls::PublicKey;
+use ream_cache::SharedCache;
 use ream_consensus::{
-    constants::{DEFAULT_BOOST_FACTOR, SLOTS_PER_EPOCH},
-    electra::beacon_state::BeaconState,
+    constants::SLOTS_PER_EPOCH,
+    electra::{
+        beacon_state::BeaconState, blinded_beacon_block::BlindedBeaconBlock,
+        blinded_beacon_block_body::BlindedBeaconBlockBody,
+    },
     validator::Validator,
 };
+use ream_execution_engine::ExecutionEngine;
+use ream_fork_choice::store::Store;
+use ream_operation_pool::OperationPool;
 use ream_storage::db::ReamDB;
+use ream_validator::execution_requests::prepare_execution_payload;
 use serde::Serialize;
 
 use super::state::get_state_from_id;
@@ -431,19 +440,98 @@ fn check_validator_participation(
 #[get("/validator/blocks/{slot}")]
 pub async fn prepare_block(
     db: Data<ReamDB>,
+    operation_pool: Data<Arc<OperationPool>>,
+    execution_engine: Data<Option<ExecutionEngine>>,
+    cache: Data<Arc<SharedCache>>,
     slot: Path<u64>,
     query: Query<ValidatorBlockQuery>,
 ) -> Result<impl Responder, ApiError> {
-    let block: ProduceBlockResponse = {};
+    let slot = slot.into_inner();
 
-    // let randao_verification =
-    //     get_randao_verification(query.randao_reveal, query.skip_randao_verification, true)?;
+    let suggested_fee_recipient;
+    {
+        let cache = cache.get_ref().clone();
+        let cache_locked = &mut cache.read().unwrap();
 
-    // let builder_boost_factor = if query.builder_boost_factor == Some(DEFAULT_BOOST_FACTOR) {
-    //     None
-    // } else {
-    //     query.builder_boost_factor
+        let recipient = cache_locked
+            .peek(&"suggested_fee_recipient".to_string())
+            .ok_or_else(|| ApiError::InternalError("fee recipient not set".to_string()))?;
+
+        suggested_fee_recipient = Address::parse_checksummed(recipient.as_str(), None)
+            .map_err(|err| ApiError::InternalError(format!("Failed to read cache, err {err:?}")))?;
+    };
+
+    let store = Store {
+        db: db.get_ref().clone(),
+        operation_pool: operation_pool.get_ref().clone(),
+    };
+
+    // validate slot > current_slot + 1 or not ?
+    let state = db.get_latest_state().map_err(|err| {
+        ApiError::InternalError(format!("Failed to get latest state, Err {err:?}"))
+    })?;
+
+    let proposer_index = state.get_beacon_proposer_index(Some(slot)).map_err(|err| {
+        ApiError::InternalError(format!(
+            "Failed to calculate proposer index for {slot}, err {err:?}"
+        ))
+    })?;
+
+    let parent_root = db
+        .slot_index_provider()
+        .get_highest_root()
+        .map_err(|err| {
+            ApiError::InternalError(format!(
+                "Failed to calculate proposer index for {slot}, err {err:?}"
+            ))
+        })?
+        .ok_or(ApiError::NotFound(
+            "Failed to find highest block root".to_string(),
+        ))?;
+
+    let safety_block = state.latest_block_header.body_root;
+    let finalized_block = state.finalized_checkpoint.root;
+
+    let payload_id = match &**execution_engine {
+        Some(execution_engine) => prepare_execution_payload(
+            state,
+            safety_block,
+            finalized_block,
+            suggested_fee_recipient,
+            execution_engine.clone(),
+        )
+        .await
+        .map_err(|err| {
+            ApiError::InternalError(format!(
+                "Failed to prepare execution payload, error: {err:?}"
+            ))
+        })?
+        .payload_id
+        .unwrap(),
+        None => {
+            return Err(ApiError::InternalError(
+                "Execution engine is offline".to_string(),
+            ));
+        }
+    };
+
+    // let beacon_block_body = BlindedBeaconBlockBody {};
+
+    // let block_data = ProduceBlockData::Blinded(BlindedBeaconBlock {
+    //     slot,
+    //     proposer_index,
+    //     parent_root,
+    //     state_root: state.state_root(),
+    //     body: todo!(),
+    // });
+
+    // let block = ProduceBlockResponse {
+    //     version: VERSION.to_owned(),
+    //     execution_payload_blinded: true,
+    //     execution_payload_value: todo!(),
+    //     consensus_block_value: todo!(),
+    //     data: block_data,
     // };
 
-    Ok(HttpResponse::Ok().json(block))
+    Ok(HttpResponse::Ok().json({}))
 }

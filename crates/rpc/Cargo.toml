@@ -40,3 +40,4 @@ ream-operation-pool.workspace = true
 ream-p2p.workspace = true
 ream-storage.workspace = true
 ream-cache.workspace = true
+ream-validator.workspace = true
