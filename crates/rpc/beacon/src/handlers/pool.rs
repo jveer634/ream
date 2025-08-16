@@ -4,7 +4,11 @@ use actix_web::{
     HttpResponse, Responder, get, post,
     web::{Data, Json},
 };
-use ream_api_types_beacon::{error::ApiError, id::ID, responses::DataResponse};
+use ream_api_types_beacon::{
+    error::ApiError,
+    id::ID,
+    responses::{DataResponse, DataVersionedResponse},
+};
 use ream_consensus_beacon::{
     bls_to_execution_change::SignedBLSToExecutionChange, voluntary_exit::SignedVoluntaryExit,
 };
@@ -97,4 +101,13 @@ pub async fn post_voluntary_exits(
     // TODO: publish voluntary exit to peers (gossipsub) - https://github.com/ReamLabs/ream/issues/556
 
     Ok(HttpResponse::Ok())
+}
+
+/// GET /eth/v2/beacon/pool/attester_slashings
+#[get("/beacon/pool/attester_slashings")]
+pub async fn get_pool_attester_slashings(
+    operation_pool: Data<Arc<OperationPool>>,
+) -> Result<impl Responder, ApiError> {
+    let attester_slashings = operation_pool.get_all_attester_slashings();
+    Ok(HttpResponse::Ok().json(DataVersionedResponse::new(attester_slashings)))
 }
