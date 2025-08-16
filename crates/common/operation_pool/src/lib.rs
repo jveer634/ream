@@ -107,7 +107,7 @@ impl OperationPool {
         });
     }
 
-    pub fn insert_attester_slashing(&mut self, slashing: AttesterSlashing) {
+    pub fn insert_attester_slashing(&self, slashing: AttesterSlashing) {
         self.attester_slashings.write().insert(slashing);
     }
 
