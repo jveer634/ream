@@ -140,7 +140,7 @@ pub async fn post_pool_attester_slashings(
                 "Invalid attester slashing, it will never pass validation so it's rejected"
                     .to_string(),
             )
-        });
+        })?;
 
     operation_pool.insert_attester_slashing(attester_slashing);
     // TODO: publish attester slashing to peers (gossipsub) - https://github.com/ReamLabs/ream/issues/556
