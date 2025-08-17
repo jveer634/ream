@@ -13,11 +13,11 @@ One of our goals is to build an ecosystem where developers can seamlessly build 
 
 The Lean Chain is the next generation of Ethereum Consensus, incorporating all of the greatest and latest ideas from the Ethereum research roadmap. Its goal is to transition quickly and safely from the Beacon Chain to a consensus layer design much closer to the final design of Ethereum.
 
-[Video of the announcement of the Beam Chain with more information](https://youtu.be/lRqnFrqpq4k?si=YODLo0MBgkVMblmE)
+[Video of the announcement of the Lean Chain with more information](https://youtu.be/lRqnFrqpq4k?si=YODLo0MBgkVMblmE)
 
 ## What are our goals?
 
-Building the first Lean Chain client which is 
+Building the first Lean Chain consenus client which is 
 - Modular
 - Contributor Friendly
 - Blazingly Fast
