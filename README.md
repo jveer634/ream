@@ -5,19 +5,19 @@
 
 ## What is Ream
 
-Ream aims to be modular, contributor-friendly, and blazingly fast implementation of the Lean Chain Consensus specification.
+Ream aims to be modular, contributor-friendly, and blazingly fast implementation of the Lean Consensus specification.
 
 One of our goals is to build an ecosystem where developers can seamlessly build on Ream, saving time and avoiding the need to reinvent the wheel.
 
-## What is the Lean Chain
+## What is the Lean Consensus
 
-The Lean Chain is the next generation of Ethereum Consensus, incorporating all of the greatest and latest ideas from the Ethereum research roadmap. Its goal is to transition quickly and safely from the Beacon Chain to a consensus layer design much closer to the final design of Ethereum.
+The Lean consensus is beacon chain 2.0, the next generation of Ethereum: hardened for ultimate security and decentralization, plus finality in seconds; formerly branded as "beam chain". Its goal is to transition quickly and safely from the Beacon Chain to a consensus layer design much closer to the final design of Ethereum.
 
-[Video of the announcement of the Lean Chain with more information](https://youtu.be/lRqnFrqpq4k?si=YODLo0MBgkVMblmE)
+[Video of the announcement of the Lean Consensus with more information](https://youtu.be/lRqnFrqpq4k?si=YODLo0MBgkVMblmE)
 
 ## What are our goals?
 
-Building the first Lean Chain consenus client which is 
+Building the first Lean consenus client which is 
 - Modular
 - Contributor Friendly
 - Blazingly Fast
