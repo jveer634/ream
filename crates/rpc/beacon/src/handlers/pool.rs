@@ -12,7 +12,10 @@ use ream_network_manager::service::NetworkManagerService;
 use ream_operation_pool::OperationPool;
 use ream_p2p::{
     channel::GossipMessage,
-    gossipsub::beacon::topics::{GossipTopic, GossipTopicKind},
+    gossipsub::beacon::{
+        message,
+        topics::{GossipTopic, GossipTopicKind},
+    },
 };
 use ream_storage::db::ReamDB;
 use ssz::Encode;
@@ -33,6 +36,7 @@ pub async fn get_bls_to_execution_changes(
 pub async fn post_bls_to_execution_changes(
     db: Data<ReamDB>,
     operation_pool: Data<Arc<OperationPool>>,
+    network_manager: Data<NetworkManagerService>,
     signed_bls_to_execution_change: Json<SignedBLSToExecutionChange>,
 ) -> Result<impl Responder, ApiError> {
     let highest_slot = db
@@ -56,7 +60,18 @@ pub async fn post_bls_to_execution_changes(
         ))
     })?;
 
-    operation_pool.insert_signed_bls_to_execution_change(signed_bls_to_execution_change);
+    operation_pool.insert_signed_bls_to_execution_change(signed_bls_to_execution_change.clone());
+
+    network_manager
+        .as_ref()
+        .p2p_sender
+        .send_gossip(GossipMessage {
+            topic: GossipTopic {
+                fork: beacon_state.fork.current_version,
+                kind: GossipTopicKind::BlsToExecutionChange,
+            },
+            data: signed_bls_to_execution_change.as_ssz_bytes(),
+        });
     // TODO: publish bls_to_execution_change to peers (gossipsub) - https://github.com/ReamLabs/ream/issues/556
 
     Ok(HttpResponse::Ok())
@@ -76,7 +91,7 @@ pub async fn get_voluntary_exits(
 pub async fn post_voluntary_exits(
     db: Data<ReamDB>,
     operation_pool: Data<Arc<OperationPool>>,
-    network_manager: Data<NetworkManagerService>, // <-- Inject NetworkManagerService
+    network_manager: Data<NetworkManagerService>,
     signed_voluntary_exit: Json<SignedVoluntaryExit>,
 ) -> Result<impl Responder, ApiError> {
     let highest_slot = db
@@ -100,9 +115,7 @@ pub async fn post_voluntary_exits(
             ))
         })?;
 
-    let message = signed_voluntary_exit.as_ssz_bytes();
-
-    operation_pool.insert_signed_voluntary_exit(signed_voluntary_exit);
+    operation_pool.insert_signed_voluntary_exit(signed_voluntary_exit.clone());
 
     network_manager
         .as_ref()
@@ -112,7 +125,7 @@ pub async fn post_voluntary_exits(
                 fork: beacon_state.fork.current_version,
                 kind: GossipTopicKind::VoluntaryExit,
             },
-            data: message,
+            data: signed_voluntary_exit.as_ssz_bytes(),
         });
 
     Ok(HttpResponse::Ok())
