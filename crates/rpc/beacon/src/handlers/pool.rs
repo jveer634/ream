@@ -8,8 +8,14 @@ use ream_api_types_beacon::{error::ApiError, id::ID, responses::DataResponse};
 use ream_consensus_beacon::{
     bls_to_execution_change::SignedBLSToExecutionChange, voluntary_exit::SignedVoluntaryExit,
 };
+use ream_network_manager::service::NetworkManagerService;
 use ream_operation_pool::OperationPool;
+use ream_p2p::{
+    channel::GossipMessage,
+    gossipsub::beacon::topics::{GossipTopic, GossipTopicKind},
+};
 use ream_storage::db::ReamDB;
+use ssz::Encode;
 
 use crate::handlers::state::get_state_from_id;
 
@@ -70,6 +76,7 @@ pub async fn get_voluntary_exits(
 pub async fn post_voluntary_exits(
     db: Data<ReamDB>,
     operation_pool: Data<Arc<OperationPool>>,
+    network_manager: Data<NetworkManagerService>, // <-- Inject NetworkManagerService
     signed_voluntary_exit: Json<SignedVoluntaryExit>,
 ) -> Result<impl Responder, ApiError> {
     let highest_slot = db
@@ -93,8 +100,20 @@ pub async fn post_voluntary_exits(
             ))
         })?;
 
+    let message = signed_voluntary_exit.as_ssz_bytes();
+
     operation_pool.insert_signed_voluntary_exit(signed_voluntary_exit);
-    // TODO: publish voluntary exit to peers (gossipsub) - https://github.com/ReamLabs/ream/issues/556
+
+    network_manager
+        .as_ref()
+        .p2p_sender
+        .send_gossip(GossipMessage {
+            topic: GossipTopic {
+                fork: beacon_state.fork.current_version,
+                kind: GossipTopicKind::VoluntaryExit,
+            },
+            data: message,
+        });
 
     Ok(HttpResponse::Ok())
 }
