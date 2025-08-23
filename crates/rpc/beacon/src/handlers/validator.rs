@@ -20,6 +20,7 @@ use ream_consensus_misc::{
 use ream_fork_choice::store::Store;
 use ream_operation_pool::OperationPool;
 use ream_storage::{db::ReamDB, tables::Field};
+use ream_validator_beacon::contribution_and_proof::ContributionAndProof;
 use serde::Serialize;
 
 use super::state::get_state_from_id;
@@ -484,4 +485,11 @@ pub async fn get_attestation_data(
         source: source_checkpoint,
         target: target_checkpoint,
     })))
+}
+
+#[post("/validator/contribution_and_proofs")]
+pub async fn post_contribution_and_proofs(
+    _validator_indices: Json<Vec<ContributionAndProof>>,
+) -> Result<impl Responder, ApiError> {
+    Ok(HttpResponse::Ok())
 }
