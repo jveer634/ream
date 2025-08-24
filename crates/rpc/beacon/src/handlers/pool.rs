@@ -12,10 +12,7 @@ use ream_network_manager::service::NetworkManagerService;
 use ream_operation_pool::OperationPool;
 use ream_p2p::{
     channel::GossipMessage,
-    gossipsub::beacon::{
-        message,
-        topics::{GossipTopic, GossipTopicKind},
-    },
+    gossipsub::beacon::topics::{GossipTopic, GossipTopicKind},
 };
 use ream_storage::db::ReamDB;
 use ssz::Encode;
@@ -27,8 +24,9 @@ use crate::handlers::state::get_state_from_id;
 pub async fn get_bls_to_execution_changes(
     operation_pool: Data<Arc<OperationPool>>,
 ) -> Result<impl Responder, ApiError> {
-    let signed_bls_to_execution_changes = operation_pool.get_signed_bls_to_execution_changes();
-    Ok(HttpResponse::Ok().json(DataResponse::new(signed_bls_to_execution_changes)))
+    Ok(HttpResponse::Ok().json(DataResponse::new(
+        operation_pool.get_signed_bls_to_execution_changes(),
+    )))
 }
 
 /// POST /eth/v1/beacon/pool/bls_to_execution_changes
@@ -60,8 +58,6 @@ pub async fn post_bls_to_execution_changes(
         ))
     })?;
 
-    operation_pool.insert_signed_bls_to_execution_change(signed_bls_to_execution_change.clone());
-
     network_manager
         .as_ref()
         .p2p_sender
@@ -72,6 +68,7 @@ pub async fn post_bls_to_execution_changes(
             },
             data: signed_bls_to_execution_change.as_ssz_bytes(),
         });
+    operation_pool.insert_signed_bls_to_execution_change(signed_bls_to_execution_change);
     Ok(HttpResponse::Ok())
 }
 
@@ -80,8 +77,9 @@ pub async fn post_bls_to_execution_changes(
 pub async fn get_voluntary_exits(
     operation_pool: Data<Arc<OperationPool>>,
 ) -> Result<impl Responder, ApiError> {
-    let signed_voluntary_exits = operation_pool.get_signed_voluntary_exits();
-    Ok(HttpResponse::Ok().json(DataResponse::new(signed_voluntary_exits)))
+    Ok(HttpResponse::Ok().json(DataResponse::new(
+        operation_pool.get_signed_voluntary_exits(),
+    )))
 }
 
 /// POST /eth/v1/beacon/pool/voluntary_exits
@@ -113,8 +111,6 @@ pub async fn post_voluntary_exits(
             ))
         })?;
 
-    operation_pool.insert_signed_voluntary_exit(signed_voluntary_exit.clone());
-
     network_manager
         .as_ref()
         .p2p_sender
@@ -126,5 +122,6 @@ pub async fn post_voluntary_exits(
             data: signed_voluntary_exit.as_ssz_bytes(),
         });
 
+    operation_pool.insert_signed_voluntary_exit(signed_voluntary_exit);
     Ok(HttpResponse::Ok())
 }
