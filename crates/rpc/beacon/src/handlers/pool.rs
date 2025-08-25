@@ -13,8 +13,14 @@ use ream_consensus_beacon::{
     attester_slashing::AttesterSlashing, bls_to_execution_change::SignedBLSToExecutionChange,
     voluntary_exit::SignedVoluntaryExit,
 };
+use ream_network_manager::service::NetworkManagerService;
 use ream_operation_pool::OperationPool;
+use ream_p2p::{
+    gossipsub::beacon::topics::{GossipTopic, GossipTopicKind},
+    network::beacon::channel::GossipMessage,
+};
 use ream_storage::db::ReamDB;
+use ssz::Encode;
 
 use crate::handlers::state::get_state_from_id;
 
@@ -109,8 +115,9 @@ pub async fn post_voluntary_exits(
 pub async fn get_pool_attester_slashings(
     operation_pool: Data<Arc<OperationPool>>,
 ) -> Result<impl Responder, ApiError> {
-    let attester_slashings = operation_pool.get_all_attester_slashings();
-    Ok(HttpResponse::Ok().json(DataVersionedResponse::new(attester_slashings)))
+    Ok(HttpResponse::Ok().json(DataVersionedResponse::new(
+        operation_pool.get_all_attester_slashings(),
+    )))
 }
 
 /// POST /eth/v2/beacon/pool/attester_slashings
@@ -118,6 +125,7 @@ pub async fn get_pool_attester_slashings(
 pub async fn post_pool_attester_slashings(
     db: Data<ReamDB>,
     operation_pool: Data<Arc<OperationPool>>,
+    network_manager: Data<Arc<NetworkManagerService>>,
     attester_slashing: Json<AttesterSlashing>,
 ) -> Result<impl Responder, ApiError> {
     let attester_slashing = attester_slashing.into_inner();
@@ -133,17 +141,22 @@ pub async fn post_pool_attester_slashings(
         ))?;
     let beacon_state = get_state_from_id(ID::Slot(highest_slot), &db).await?;
 
-    let _ = beacon_state
+    beacon_state
         .get_slashable_attester_indices(&attester_slashing)
-        .map_err(|_| {
+        .map_err(|err| {
             ApiError::BadRequest(
-                "Invalid attester slashing, it will never pass validation so it's rejected"
-                    .to_string(),
+                format!("Invalid attester slashing, it will never pass validation so it's rejected, err: {err:?}"),
             )
         })?;
+    network_manager.p2p_sender.send_gossip(GossipMessage {
+        topic: GossipTopic {
+            fork: beacon_state.fork.current_version,
+            kind: GossipTopicKind::AttesterSlashing,
+        },
+        data: attester_slashing.as_ssz_bytes(),
+    });
 
     operation_pool.insert_attester_slashing(attester_slashing);
-    // TODO: publish attester slashing to peers (gossipsub) - https://github.com/ReamLabs/ream/issues/556
 
     Ok(HttpResponse::Ok())
 }
