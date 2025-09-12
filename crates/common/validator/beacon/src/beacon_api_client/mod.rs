@@ -406,6 +406,32 @@ impl BeaconApiClient {
         Ok(())
     }
 
+    pub async fn prepare_sync_committee_subnet(
+        &self,
+        subscriptions: Vec<SyncCommitteeContribution>,
+    ) -> anyhow::Result<(), ValidatorError> {
+        let response = self
+            .http_client
+            .execute(
+                self.http_client
+                    .post(
+                        "/eth/v1/validator/sync_committee_subscriptions".to_string(),
+                        ContentType::Json,
+                    )?
+                    .json(&subscriptions)
+                    .build()?,
+            )
+            .await?;
+
+        if !response.status().is_success() {
+            return Err(ValidatorError::RequestFailed {
+                status_code: response.status(),
+            });
+        }
+
+        Ok(())
+    }
+
     pub async fn get_sync_committee_contribution(
         &self,
         slot: u64,

@@ -5,6 +5,7 @@ use actix_web::{
     web::{Data, Json, Path, Query},
 };
 use ream_api_types_beacon::{
+    committee::SyncCommitteeSubscription,
     id::ValidatorID,
     query::{AttestationQuery, IdQuery, StatusQuery},
     request::ValidatorsPostRequest,
@@ -494,4 +495,11 @@ pub async fn post_sync_committee_selections(
     _selections: Json<SyncCommitteeSelection>,
 ) -> Result<impl Responder, ApiError> {
     Ok(HttpResponse::NotImplemented())
+}
+
+#[post("/validator/sync_committee_subscriptions")]
+pub async fn post_sync_committee_subscriptions(
+    _subscriptions: Json<Vec<SyncCommitteeSubscription>>,
+) -> Result<impl Responder, ApiError> {
+    Ok(HttpResponse::Ok())
 }

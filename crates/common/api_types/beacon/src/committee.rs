@@ -12,3 +12,10 @@ pub struct BeaconCommitteeSubscription {
     pub slot: u64,
     pub is_aggregator: bool,
 }
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct SyncCommitteeSubscription {
+    pub validator_index: u64,
+    pub sync_committee_indices: Vec<u64>,
+    pub until_epoch: u64,
+}
