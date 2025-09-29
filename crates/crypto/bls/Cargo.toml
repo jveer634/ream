@@ -27,3 +27,6 @@ ssz_types.workspace = true
 thiserror.workspace = true
 tree_hash.workspace = true
 tree_hash_derive.workspace = true
+
+[lints]
+workspace = true

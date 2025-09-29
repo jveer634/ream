@@ -21,8 +21,8 @@ impl DataTransform for SnappyTransform {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::InvalidData,
                 format!(
-                    "Message size ({}) exceeds max gossip size per message ({})",
-                    len, self.max_size_per_message
+                    "Message size ({len}) exceeds max gossip size per message ({})",
+                    self.max_size_per_message
                 ),
             ));
         }

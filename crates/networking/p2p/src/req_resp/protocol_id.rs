@@ -17,16 +17,14 @@ impl ProtocolId {
         let protocol_id = match protocol {
             SupportedProtocol::Beacon(beacon_protocol) => {
                 format!(
-                    "{}/{}/{}/ssz_snappy",
-                    BEACON_PROTOCOL_PREFIX,
+                    "{BEACON_PROTOCOL_PREFIX}/{}/{}/ssz_snappy",
                     beacon_protocol.message_name(),
                     beacon_protocol.schema_version()
                 )
             }
             SupportedProtocol::Lean(lean_protocol) => {
                 format!(
-                    "{}/{}/{}/ssz_snappy",
-                    LEAN_PROTOCOL_PREFIX,
+                    "{LEAN_PROTOCOL_PREFIX}/{}/{}/ssz_snappy",
                     lean_protocol.message_name(),
                     lean_protocol.schema_version()
                 )

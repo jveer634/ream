@@ -21,7 +21,7 @@ use ream_consensus_misc::{
 };
 use ream_fork_choice::store::Store;
 use ream_operation_pool::OperationPool;
-use ream_storage::{db::ReamDB, tables::field::Field};
+use ream_storage::{db::beacon::BeaconDB, tables::field::Field};
 use serde::Serialize;
 
 use super::state::get_state_from_id;
@@ -56,7 +56,7 @@ fn build_validator_balances(
 
 #[get("/beacon/states/{state_id}/validator/{validator_id}")]
 pub async fn get_validator_from_state(
-    db: Data<ReamDB>,
+    db: Data<BeaconDB>,
     param: Path<(ID, ValidatorID)>,
 ) -> Result<impl Responder, ApiError> {
     let (state_id, validator_id) = param.into_inner();
@@ -108,7 +108,7 @@ pub async fn get_validator_from_state(
 
 pub async fn validator_status(
     validator: &Validator,
-    db: &ReamDB,
+    db: &BeaconDB,
 ) -> Result<ValidatorStatus, ApiError> {
     let highest_slot = db
         .slot_index_provider()
@@ -130,7 +130,7 @@ pub async fn validator_status(
 
 #[get("/beacon/states/{state_id}/validators")]
 pub async fn get_validators_from_state(
-    db: Data<ReamDB>,
+    db: Data<BeaconDB>,
     state_id: Path<ID>,
     id_query: Query<IdQuery>,
     status_query: Query<StatusQuery>,
@@ -207,7 +207,7 @@ pub async fn get_validators_from_state(
 
 #[post("/beacon/states/{state_id}/validators")]
 pub async fn post_validators_from_state(
-    db: Data<ReamDB>,
+    db: Data<BeaconDB>,
     state_id: Path<ID>,
     request: Json<ValidatorsPostRequest>,
     _status_query: Json<StatusQuery>,
@@ -290,7 +290,7 @@ struct ValidatorIdentity {
 
 #[post("/beacon/states/{state_id}/validator_identities")]
 pub async fn post_validator_identities_from_state(
-    db: Data<ReamDB>,
+    db: Data<BeaconDB>,
     state_id: Path<ID>,
     validator_ids: Json<Vec<ValidatorID>>,
 ) -> Result<impl Responder, ApiError> {
@@ -324,7 +324,7 @@ pub async fn post_validator_identities_from_state(
 pub async fn get_validator_balances_from_state(
     state_id: Path<ID>,
     query: Query<IdQuery>,
-    db: Data<ReamDB>,
+    db: Data<BeaconDB>,
 ) -> Result<impl Responder, ApiError> {
     let state = get_state_from_id(state_id.into_inner(), &db).await?;
     Ok(
@@ -343,7 +343,7 @@ pub async fn get_validator_balances_from_state(
 pub async fn post_validator_balances_from_state(
     state_id: Path<ID>,
     body: Json<IdQuery>,
-    db: Data<ReamDB>,
+    db: Data<BeaconDB>,
 ) -> Result<impl Responder, ApiError> {
     let state = get_state_from_id(state_id.into_inner(), &db).await?;
     Ok(
@@ -373,7 +373,7 @@ impl ValidatorLivenessData {
 
 #[post("/validator/liveness/{epoch}")]
 pub async fn post_validator_liveness(
-    db: Data<ReamDB>,
+    db: Data<BeaconDB>,
     epoch: Path<u64>,
     validator_indices: Json<Vec<String>>,
 ) -> Result<impl Responder, ApiError> {
@@ -433,7 +433,7 @@ fn check_validator_participation(
 }
 #[get("/validator/attestation_data")]
 pub async fn get_attestation_data(
-    db: Data<ReamDB>,
+    db: Data<BeaconDB>,
     opertation_pool: Data<Arc<OperationPool>>,
     query: Query<AttestationQuery>,
 ) -> Result<impl Responder, ApiError> {

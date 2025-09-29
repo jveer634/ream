@@ -1,5 +1,6 @@
 use hashsig::{MESSAGE_LENGTH, signature::SignatureScheme};
 use rand::Rng;
+use serde::{Deserialize, Serialize};
 
 use crate::hashsig::{
     HashSigScheme, errors::SigningError, public_key::PublicKey, signature::Signature,
@@ -7,6 +8,7 @@ use crate::hashsig::{
 
 pub type HashSigPrivateKey = <HashSigScheme as SignatureScheme>::SecretKey;
 
+#[derive(Serialize, Deserialize)]
 pub struct PrivateKey {
     inner: HashSigPrivateKey,
 }
@@ -16,7 +18,7 @@ impl PrivateKey {
         Self { inner }
     }
 
-    pub fn generate<R: Rng>(
+    pub fn generate_key_pair<R: Rng>(
         rng: &mut R,
         activation_epoch: usize,
         num_active_epochs: usize,
@@ -53,7 +55,7 @@ mod tests {
         let num_active_epochs = 10; // Test for 10 epochs for quick key generation
 
         let (public_key, private_key) =
-            PrivateKey::generate(&mut rng, activation_epoch, num_active_epochs);
+            PrivateKey::generate_key_pair(&mut rng, activation_epoch, num_active_epochs);
 
         let epoch = 5;
 

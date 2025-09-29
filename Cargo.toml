@@ -33,6 +33,7 @@ members = [
     "crates/networking/p2p",
     "crates/networking/syncer",
     "crates/rpc/beacon",
+    "crates/rpc/common",
     "crates/rpc/lean",
     "crates/runtime",
     "crates/storage",
@@ -60,6 +61,14 @@ repository = "https://github.com/ReamLabs/ream"
 rust-version = "1.88.0"
 version = "0.1.0"
 
+[workspace.lints.clippy]
+let_and_return = "warn"
+uninlined_format_args = "warn"
+unnecessary_debug_formatting = "warn"
+unwrap_used = "warn"
+useless_let_if_seq = "warn"
+wildcard_imports = "warn"
+
 [workspace.dependencies]
 actix-web = "4.10.2"
 actix-web-lab = "0.24.1"
@@ -71,7 +80,7 @@ alloy-rpc-types-beacon = "1.0.8"
 alloy-rpc-types-eth = "1.0.7"
 anyhow = "1.0"
 async-trait = "0.1.86"
-bip32 = "0.5.3"
+bip39 = { version = "2.2.0", features = ["rand"] }
 clap = "4"
 delay_map = "0.4.1"
 directories = { version = "6.0.0" }
@@ -148,6 +157,7 @@ ream-p2p = { path = "crates/networking/p2p" }
 ream-polynomial-commitments = { path = "crates/common/polynomial_commitments" }
 ream-post-quantum-crypto = { path = "crates/crypto/post_quantum" }
 ream-rpc-beacon = { path = "crates/rpc/beacon" }
+ream-rpc-common = { path = "crates/rpc/common" }
 ream-rpc-lean = { path = "crates/rpc/lean" }
 ream-storage = { path = "crates/storage" }
 ream-sync = { path = "crates/common/sync" }

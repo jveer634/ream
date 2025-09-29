@@ -6,7 +6,8 @@ use std::{
     sync::Arc,
 };
 
-use anyhow::{anyhow, ensure};
+use alloy_primitives::hex;
+use anyhow::anyhow;
 use discv5::multiaddr::Protocol;
 use futures::StreamExt;
 use libp2p::{
@@ -16,7 +17,7 @@ use libp2p::{
     identify,
     swarm::{Config, NetworkBehaviour, Swarm, SwarmEvent},
 };
-use libp2p_identity::{KeyType, Keypair, PeerId};
+use libp2p_identity::{Keypair, PeerId, secp256k1};
 use parking_lot::Mutex;
 use ream_chain_lean::{
     lean_chain::LeanChainReader, messages::LeanChainServiceMessage, p2p_request::LeanP2PRequest,
@@ -69,7 +70,7 @@ pub struct LeanNetworkConfig {
     pub gossipsub_config: LeanGossipsubConfig,
     pub socket_address: IpAddr,
     pub socket_port: u16,
-    pub secret_key_path: Option<std::path::PathBuf>,
+    pub private_key_path: Option<std::path::PathBuf>,
 }
 
 /// NetworkService is responsible for the following:
@@ -103,21 +104,22 @@ impl LeanNetworkService {
             connection_limits::Behaviour::new(limits)
         };
 
-        let local_key = if let Some(ref path) = network_config.secret_key_path {
-            let bytes = fs::read(path).map_err(|err| {
+        let local_key = if let Some(ref path) = network_config.private_key_path {
+            let private_key_hex = fs::read_to_string(path).map_err(|err| {
                 anyhow!("failed to read secret key file {}: {err}", path.display())
             })?;
-
-            let keypair = Keypair::from_protobuf_encoding(&bytes).map_err(|err| {
-                anyhow!("failed to decode protobuf encoded libp2p keypair: {err}")
+            let private_key_bytes = hex::decode(private_key_hex.trim()).map_err(|err| {
+                anyhow!(
+                    "failed to decode hex from private key file {}: {err}",
+                    path.display()
+                )
             })?;
+            let private_key =
+                secp256k1::SecretKey::try_from_bytes(private_key_bytes).map_err(|err| {
+                    anyhow!("failed to decode secp256k1 secret key from bytes: {err}")
+                })?;
 
-            ensure!(
-                keypair.key_type() == KeyType::Secp256k1,
-                "provided keypair that is not secp256k1"
-            );
-
-            keypair
+            Keypair::from(secp256k1::Keypair::from(private_key))
         } else {
             Keypair::generate_secp256k1()
         };
@@ -157,7 +159,7 @@ impl LeanNetworkService {
             let config = Config::with_executor(Executor(executor))
                 .with_notify_handler_buffer_size(NonZeroUsize::new(7).expect("Not zero"))
                 .with_per_connection_event_buffer_size(4)
-                .with_dial_concurrency_factor(NonZeroU8::new(1).unwrap());
+                .with_dial_concurrency_factor(NonZeroU8::new(1).expect("Not zero"));
 
             SwarmBuilder::with_existing_identity(local_key.clone())
                 .with_tokio()
@@ -249,9 +251,9 @@ impl LeanNetworkService {
                                     signed_vote.as_ssz_bytes(),
                                 )
                             {
-                                warn!("publish vote for slot {} failed: {err:?}", signed_vote.data.slot);
+                                warn!("publish vote for slot {} failed: {err:?}", signed_vote.message.slot);
                             } else {
-                                info!("broadcasted vote for slot {}", signed_vote.data.slot);
+                                info!("broadcasted vote for slot {}", signed_vote.message.slot);
                             }
                         }
                     }
@@ -318,7 +320,7 @@ impl LeanNetworkService {
                     if let Err(err) =
                         self.chain_message_sender
                             .send(LeanChainServiceMessage::ProcessBlock {
-                                signed_block: *signed_block,
+                                signed_block,
                                 is_trusted: false,
                                 need_gossip: true,
                             })
@@ -327,12 +329,12 @@ impl LeanNetworkService {
                     }
                 }
                 Ok(LeanGossipsubMessage::Vote(signed_vote)) => {
-                    let slot = signed_vote.data.slot;
+                    let slot = signed_vote.message.slot;
 
                     if let Err(err) =
                         self.chain_message_sender
                             .send(LeanChainServiceMessage::ProcessVote {
-                                signed_vote: *signed_vote,
+                                signed_vote,
                                 is_trusted: false,
                                 need_gossip: true,
                             })
@@ -356,15 +358,16 @@ impl LeanNetworkService {
     async fn connect_to_peers(&mut self, peers: Vec<Multiaddr>) {
         trace!("Discovered peers: {peers:?}");
         for peer in peers {
-            if let Err(err) = self.swarm.dial(peer.clone()) {
-                warn!("Failed to dial peer: {err:?}");
-                continue;
-            }
-
             if let Some(Protocol::P2p(peer_id)) = peer
                 .iter()
                 .find(|protocol| matches!(protocol, Protocol::P2p(_)))
+                && peer_id != self.local_peer_id()
             {
+                if let Err(err) = self.swarm.dial(peer.clone()) {
+                    warn!("Failed to dial peer: {err:?}");
+                    continue;
+                }
+
                 info!("Dialing peer: {peer_id:?}",);
                 self.peer_table
                     .lock()
@@ -386,11 +389,14 @@ impl LeanNetworkService {
 mod tests {
     use std::{net::Ipv4Addr, sync::Once, time::Duration};
 
+    use alloy_primitives::B256;
     use libp2p::{Multiaddr, multiaddr::Protocol};
     use ream_chain_lean::lean_chain::LeanChain;
     use ream_network_spec::networks::{LeanNetworkSpec, set_lean_network_spec};
+    use ream_storage::db::ReamDB;
     use ream_sync::rwlock::Writer;
-    use tokio::sync::mpsc;
+    use tempdir::TempDir;
+    use tokio::sync::{Mutex, mpsc};
     use tracing_test::traced_test;
 
     use super::*;
@@ -404,18 +410,36 @@ mod tests {
         });
     }
 
+    fn create_lean_chain() -> LeanChain {
+        let temp_dir = TempDir::new("lean_node_test").unwrap();
+        let temp_path = temp_dir.path().to_path_buf();
+
+        let ream_db = ReamDB::new(temp_path).expect("unable to init Ream Database");
+        let lean_db = ream_db
+            .init_lean_db()
+            .expect("unable to init Ream Lean Database");
+        LeanChain {
+            store: Arc::new(Mutex::new(lean_db)),
+            head: B256::default(),
+            safe_target: B256::default(),
+            new_votes: Vec::new(),
+            genesis_hash: B256::default(),
+            num_validators: 0,
+        }
+    }
+
     pub async fn setup_lean_node(
         socket_port: u16,
     ) -> anyhow::Result<(LeanNetworkService, Multiaddr)> {
         ensure_network_spec_init();
 
-        let (_, lean_chain_reader) = Writer::new(LeanChain::default());
+        let (_, lean_chain_reader) = Writer::new(create_lean_chain());
         let executor = ReamExecutor::new().expect("Failed to create executor");
         let config = Arc::new(LeanNetworkConfig {
             gossipsub_config: LeanGossipsubConfig::default(),
             socket_address: Ipv4Addr::new(127, 0, 0, 1).into(),
             socket_port,
-            secret_key_path: None,
+            private_key_path: None,
         });
         let (sender, _receiver) = mpsc::unbounded_channel::<LeanChainServiceMessage>();
         let (_outbound_request_sender_unused, outbound_request_receiver) =

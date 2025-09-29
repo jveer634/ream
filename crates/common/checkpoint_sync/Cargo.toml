@@ -27,3 +27,6 @@ ream-consensus-misc.workspace = true
 ream-fork-choice.workspace = true
 ream-network-spec.workspace = true
 ream-storage.workspace = true
+
+[lints]
+workspace = true

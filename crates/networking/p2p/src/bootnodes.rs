@@ -5,7 +5,7 @@ use discv5::{Enr, multiaddr::Protocol};
 use libp2p::Multiaddr;
 use ream_network_spec::networks::Network;
 
-use crate::network::misc::peer_id_from_enr;
+use crate::{network::misc::peer_id_from_enr, utils::quic_from_enr};
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub enum Bootnodes {
@@ -24,6 +24,17 @@ impl FromStr for Bootnodes {
             "default" => Ok(Bootnodes::Default),
             "none" => Ok(Bootnodes::None),
             _ => {
+                // Check if it's a file path ending with .yaml or .yml
+                if (s.ends_with(".yaml") || s.ends_with(".yml")) && std::path::Path::new(s).exists()
+                {
+                    let yaml_content = std::fs::read_to_string(s)?;
+                    return Ok(Bootnodes::Custom(
+                        serde_yaml::from_str(&yaml_content)
+                            .map_err(|err| anyhow!("Failed to deserialize ENRs from {s}: {err}"))?,
+                    ));
+                }
+
+                // Try parsing as comma-separated ENRs
                 if let Ok(enrs) = s
                     .split(',')
                     .map(Enr::from_str)
@@ -32,6 +43,7 @@ impl FromStr for Bootnodes {
                     return Ok(Bootnodes::Custom(enrs));
                 }
 
+                // Try parsing as comma-separated multiaddrs
                 if let Ok(addresses) = s
                     .split(',')
                     .map(Multiaddr::from_str)
@@ -40,7 +52,9 @@ impl FromStr for Bootnodes {
                     return Ok(Bootnodes::Multiaddr(addresses));
                 }
 
-                Err(anyhow!("Failed to parse {s} as ENR or Multiaddr"))
+                Err(anyhow!(
+                    "Failed to parse {s} as ENR, Multiaddr, or YAML file path"
+                ))
             }
         }
     }
@@ -93,13 +107,21 @@ pub fn to_multiaddrs(enrs: &[Enr]) -> Vec<Multiaddr> {
     let mut multiaddrs: Vec<Multiaddr> = Vec::new();
     for enr in enrs {
         if let Some(peer_id) = peer_id_from_enr(enr) {
-            if let Some(ip) = enr.ip4()
-                && let Some(tcp) = enr.tcp4()
-            {
-                let mut multiaddr: Multiaddr = ip.into();
-                multiaddr.push(Protocol::Tcp(tcp));
-                multiaddr.push(Protocol::P2p(peer_id));
-                multiaddrs.push(multiaddr);
+            if let Some(ip) = enr.ip4() {
+                if let Some(quic) = quic_from_enr(enr) {
+                    let mut multiaddr: Multiaddr = ip.into();
+                    multiaddr.push(Protocol::Udp(quic));
+                    multiaddr.push(Protocol::QuicV1);
+                    multiaddr.push(Protocol::P2p(peer_id));
+                    multiaddrs.push(multiaddr);
+                }
+
+                if let Some(tcp) = enr.tcp4() {
+                    let mut multiaddr: Multiaddr = ip.into();
+                    multiaddr.push(Protocol::Tcp(tcp));
+                    multiaddr.push(Protocol::P2p(peer_id));
+                    multiaddrs.push(multiaddr);
+                }
             }
             if let Some(ip6) = enr.ip6()
                 && let Some(tcp6) = enr.tcp6()

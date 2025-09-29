@@ -8,12 +8,25 @@ use serde::Deserialize;
 /// Static specification of the Lean Chain network.
 pub static LEAN_NETWORK_SPEC: OnceLock<Arc<LeanNetworkSpec>> = OnceLock::new();
 
+/// Use 3 as the default justification lookback slots if not specified.
+fn default_justification_lookback_slots() -> u64 {
+    3
+}
+
+/// Use 4 seconds as the default seconds per slot if not specified.
+fn default_seconds_per_slot() -> u64 {
+    4
+}
+
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, Default)]
 #[serde(rename_all = "UPPERCASE")]
 pub struct LeanNetworkSpec {
     pub genesis_time: u64,
+    #[serde(default = "default_justification_lookback_slots")]
     pub justification_lookback_slots: u64,
+    #[serde(default = "default_seconds_per_slot")]
     pub seconds_per_slot: u64,
+    #[serde(alias = "VALIDATOR_COUNT")]
     pub num_validators: u64,
 }
 

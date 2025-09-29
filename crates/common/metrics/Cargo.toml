@@ -12,3 +12,6 @@ version.workspace = true
 [dependencies]
 lazy_static.workspace = true
 prometheus_exporter.workspace = true
+
+[lints]
+workspace = true

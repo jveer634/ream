@@ -9,6 +9,12 @@ repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
 
+[features]
+default = ["signature-scheme-prod"]
+
+signature-scheme-prod = []
+signature-scheme-test = []
+
 [dependencies]
 anyhow.workspace = true
 ethereum_ssz.workspace = true
@@ -20,3 +26,6 @@ serde_json.workspace = true
 thiserror.workspace = true
 tree_hash.workspace = true
 tree_hash_derive.workspace = true
+
+[lints]
+workspace = true

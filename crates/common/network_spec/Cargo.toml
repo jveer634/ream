@@ -18,3 +18,6 @@ serde_yaml.workspace = true
 
 # ream-dependencies
 ream-consensus-misc.workspace = true
+
+[lints]
+workspace = true

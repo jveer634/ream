@@ -14,3 +14,6 @@ actix-web.workspace = true
 alloy-primitives.workspace = true
 serde.workspace = true
 thiserror.workspace = true
+
+[lints]
+workspace = true

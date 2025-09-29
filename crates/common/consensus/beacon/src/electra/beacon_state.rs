@@ -100,7 +100,9 @@ use crate::{
 };
 
 pub mod quoted_u8_var_list {
-    use super::*;
+    use super::{
+        Deserialize, Deserializer, Serialize, Serializer, ValidatorRegistryLimit, VariableList,
+    };
 
     pub fn serialize<S>(
         value: &VariableList<u8, ValidatorRegistryLimit>,

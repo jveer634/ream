@@ -40,3 +40,6 @@ ream-bls.workspace = true
 ream-consensus-misc.workspace = true
 ream-merkle.workspace = true
 ream-network-spec.workspace = true
+
+[lints]
+workspace = true

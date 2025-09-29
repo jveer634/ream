@@ -1,0 +1,23 @@
+[package]
+name = "ream-rpc-common"
+authors.workspace = true
+edition.workspace = true
+keywords.workspace = true
+license.workspace = true
+readme.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[dependencies]
+actix-web.workspace = true
+serde.workspace = true
+tracing.workspace = true
+
+#ream-dependencies
+ream-api-types-beacon.workspace = true
+ream-api-types-common.workspace = true
+ream-node.workspace = true
+
+[lints]
+workspace = true

@@ -51,5 +51,5 @@ COPY --from=builder /app/ream /usr/local/bin
 # Copy licenses
 COPY LICENSE ./
 
-EXPOSE 8545 8546
+EXPOSE 9000/udp 5052 8080
 ENTRYPOINT ["/usr/local/bin/ream"]

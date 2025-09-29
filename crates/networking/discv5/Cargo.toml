@@ -26,3 +26,6 @@ tracing.workspace = true
 # ream dependencies
 ream-consensus-misc.workspace = true
 ream-network-spec.workspace = true
+
+[lints]
+workspace = true

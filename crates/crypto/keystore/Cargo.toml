@@ -13,10 +13,15 @@ version.workspace = true
 aes.workspace = true
 alloy-primitives.workspace = true
 anyhow.workspace = true
+rand.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 sha2.workspace = true
 ssz_types.workspace = true
+uuid = { version = "1.0", features = ["v4", "serde"] }
 
 # ream dependencies
 ream-bls.workspace = true
+
+[lints]
+workspace = true

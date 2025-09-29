@@ -47,11 +47,9 @@ impl std::fmt::Display for LeanGossipTopic {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "/{}/{}/{}/{}",
-            TOPIC_PREFIX,
+            "/{TOPIC_PREFIX}/{}/{}/{ENCODING_POSTFIX}",
             self.fork.encode_hex(),
             self.kind,
-            ENCODING_POSTFIX
         )
     }
 }
@@ -75,11 +73,8 @@ impl From<LeanGossipTopic> for TopicHash {
             Vote => LEAN_VOTE_TOPIC,
         };
         TopicHash::from_raw(format!(
-            "/{}/{}/{}/{}",
-            TOPIC_PREFIX,
+            "/{TOPIC_PREFIX}/{}/{kind_str}/{ENCODING_POSTFIX}",
             val.fork.encode_hex(),
-            kind_str,
-            ENCODING_POSTFIX
         ))
     }
 }

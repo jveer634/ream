@@ -22,3 +22,6 @@ tokio.workspace = true
 # ream
 ream-consensus-beacon.workspace = true
 ream-consensus-misc.workspace = true
+
+[lints]
+workspace = true

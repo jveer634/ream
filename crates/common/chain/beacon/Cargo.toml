@@ -26,3 +26,6 @@ ream-network-spec.workspace = true
 ream-operation-pool.workspace = true
 ream-p2p.workspace = true
 ream-storage.workspace = true
+
+[lints]
+workspace = true

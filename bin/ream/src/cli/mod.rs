@@ -1,18 +1,21 @@
 pub mod account_manager;
 pub mod beacon_node;
 pub mod constants;
+pub mod generate_private_key;
 pub mod import_keystores;
 pub mod lean_node;
 pub mod validator_node;
 pub mod voluntary_exit;
+
+use std::path::PathBuf;
 
 use clap::{Parser, Subcommand};
 use ream_node::version::FULL_VERSION;
 
 use crate::cli::{
     account_manager::AccountManagerConfig, beacon_node::BeaconNodeConfig,
-    lean_node::LeanNodeConfig, validator_node::ValidatorNodeConfig,
-    voluntary_exit::VoluntaryExitConfig,
+    generate_private_key::GeneratePrivateKeyConfig, lean_node::LeanNodeConfig,
+    validator_node::ValidatorNodeConfig, voluntary_exit::VoluntaryExitConfig,
 };
 
 #[derive(Debug, Parser)]
@@ -20,6 +23,22 @@ use crate::cli::{
 pub struct Cli {
     #[command(subcommand)]
     pub command: Commands,
+
+    #[arg(
+        long,
+        help = "The directory for storing application data. If used together with --ephemeral, new child directory will be created."
+    )]
+    pub data_dir: Option<PathBuf>,
+
+    #[arg(
+        long,
+        short,
+        help = "Use new data directory, located in OS temporary directory. If used together with --data-dir, new directory will be created there instead."
+    )]
+    pub ephemeral: bool,
+
+    #[arg(long, help = "Purges the database.")]
+    pub purge_db: bool,
 }
 
 #[derive(Debug, Subcommand)]
@@ -43,6 +62,10 @@ pub enum Commands {
     /// Perform voluntary exit for a validator
     #[command(name = "voluntary_exit")]
     VoluntaryExit(Box<VoluntaryExitConfig>),
+
+    /// Generate a secp256k1 keypair for lean node
+    #[command(name = "generate_private_key")]
+    GeneratePrivateKey(Box<GeneratePrivateKeyConfig>),
 }
 
 #[cfg(test)]

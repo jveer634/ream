@@ -14,11 +14,13 @@ Options:
       --network <NETWORK>
           Provide a path to a YAML config file, or use 'ephemery' for the Ephemery network
       --bootnodes <BOOTNODES>
-          One or more comma-delimited base64-encoded ENR's of peers to initially connect to. Use 'default' to use the default bootnodes for the network. Use 'none' to disable bootnodes. [default: default]
+          Bootnodes configuration: Use 'default' for network defaults, 'none' to disable, '/path/to/nodes.yaml' for a YAML file with ENRs, or comma-delimited base64-encoded ENRs [default: default]
       --validator-registry-path <VALIDATOR_REGISTRY_PATH>
           The path to the validator registry
-      --secret-key-path <SECRET_KEY_PATH>
-          The path to the protobuf encoded secp256k1 libp2p key
+      --node-id <NODE_ID>
+          Node identifier for validator registry (e.g., 'ream_0', 'zeam_0') [default: ream]
+      --private-key-path <PRIVATE_KEY_PATH>
+          The path to the hex encoded secp256k1 libp2p key
       --socket-address <SOCKET_ADDRESS>
           Set P2P socket address [default: 0.0.0.0]
       --socket-port <SOCKET_PORT>

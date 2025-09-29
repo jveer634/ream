@@ -1083,6 +1083,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "bip39"
+version = "2.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "43d193de1f7487df1914d3a568b772458861d33f9c54249612cc2893d6915054"
+dependencies = [
+ "bitcoin_hashes 0.13.0",
+ "rand 0.8.5",
+ "rand_core 0.4.2",
+ "serde",
+ "unicode-normalization",
+]
+
+[[package]]
 name = "bit-set"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1098,10 +1111,26 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5e764a1d40d510daf35e07be9eb06e75770908c27d411ee6c92109c9840eaaf7"
 
 [[package]]
+name = "bitcoin-internals"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9425c3bf7089c983facbae04de54513cce73b41c7f9ff8c845b54e7bc64ebbfb"
+
+[[package]]
 name = "bitcoin-io"
 version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0b47c4ab7a93edb0c7198c5535ed9b52b63095f4e9b45279c6736cec4b856baf"
+
+[[package]]
+name = "bitcoin_hashes"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1930a4dabfebb8d7d9992db18ebe3ae2876f0a305fab206fd168df931ede293b"
+dependencies = [
+ "bitcoin-internals",
+ "hex-conservative 0.1.2",
+]
 
 [[package]]
 name = "bitcoin_hashes"
@@ -1110,7 +1139,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bb18c03d0db0247e147a21a6faafd5a7eb851c743db062de72018b6b7e8e4d16"
 dependencies = [
  "bitcoin-io",
- "hex-conservative",
+ "hex-conservative 0.2.1",
 ]
 
 [[package]]
@@ -2687,6 +2716,12 @@ checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
 dependencies = [
  "serde",
 ]
+
+[[package]]
+name = "hex-conservative"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "212ab92002354b4819390025006c897e8140934349e8635c9b077f47b4dcbd20"
 
 [[package]]
 name = "hex-conservative"
@@ -5136,9 +5171,9 @@ dependencies = [
 
 [[package]]
 name = "rayon"
-version = "1.10.0"
+version = "1.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b418a60154510ca1a002a752ca9714984e21e4241e804d32555251faf8b78ffa"
+checksum = "368f01d005bf8fd9b1206fb6fa653e6c4a81ceb1466406b81792d87c5677a58f"
 dependencies = [
  "either",
  "rayon-core",
@@ -5146,9 +5181,9 @@ dependencies = [
 
 [[package]]
 name = "rayon-core"
-version = "1.12.1"
+version = "1.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1465873a3dfdaa8ae7cb14b4383657caab0b3e8a0aa9ae8e04b044854c8dfce2"
+checksum = "22e18b0f0062d30d4230b2e85ff77fdfe4326feb054b9783a3460d8435c8ab91"
 dependencies = [
  "crossbeam-deque",
  "crossbeam-utils",
@@ -5182,9 +5217,11 @@ version = "0.1.0"
 dependencies = [
  "alloy-primitives",
  "anyhow",
+ "bip39",
  "clap",
  "discv5",
  "hashbrown 0.15.3",
+ "libp2p-identity",
  "prometheus_exporter",
  "rand 0.9.2",
  "rand_chacha 0.9.0",
@@ -5204,12 +5241,14 @@ dependencies = [
  "ream-node",
  "ream-operation-pool",
  "ream-p2p",
+ "ream-post-quantum-crypto",
  "ream-rpc-beacon",
  "ream-rpc-lean",
  "ream-storage",
  "ream-sync",
  "ream-validator-beacon",
  "ream-validator-lean",
+ "serde_json",
  "tokio",
  "tracing",
  "tracing-subscriber",
@@ -5221,12 +5260,10 @@ dependencies = [
 name = "ream-account-manager"
 version = "0.1.0"
 dependencies = [
- "hashsig",
+ "bip39",
  "rand 0.9.2",
  "rand_chacha 0.9.0",
- "ream-post-quantum-crypto",
  "sha2 0.10.8",
- "tracing",
 ]
 
 [[package]]
@@ -5317,9 +5354,10 @@ dependencies = [
  "anyhow",
  "ream-consensus-lean",
  "ream-consensus-misc",
+ "ream-fork-choice",
  "ream-metrics",
  "ream-network-spec",
- "ream-post-quantum-crypto",
+ "ream-storage",
  "ream-sync",
  "serde",
  "ssz_types",
@@ -5388,12 +5426,13 @@ dependencies = [
  "ethereum_hashing 0.7.0 (git+https://github.com/ReamLabs/ethereum_hashing.git?rev=c14a9ad96436e6b8b631faf49a3666e4558b71ae)",
  "ethereum_ssz",
  "ethereum_ssz_derive",
+ "itertools 0.14.0",
  "ream-consensus-misc",
  "ream-metrics",
- "ream-post-quantum-crypto",
  "serde",
  "serde_json",
  "ssz_types",
+ "tracing",
  "tree_hash",
  "tree_hash_derive",
 ]
@@ -5491,6 +5530,7 @@ dependencies = [
  "kzg",
  "ream-bls",
  "ream-consensus-beacon",
+ "ream-consensus-lean",
  "ream-consensus-misc",
  "ream-network-spec",
  "ream-operation-pool",
@@ -5502,6 +5542,7 @@ dependencies = [
  "serde_yaml",
  "ssz_types",
  "thiserror 2.0.12",
+ "tokio",
  "tracing",
  "tree_hash",
  "tree_hash_derive",
@@ -5514,11 +5555,13 @@ dependencies = [
  "aes",
  "alloy-primitives",
  "anyhow",
+ "rand 0.9.2",
  "ream-bls",
  "serde",
  "serde_json",
  "sha2 0.10.8",
  "ssz_types",
+ "uuid",
 ]
 
 [[package]]
@@ -5645,6 +5688,7 @@ dependencies = [
  "ream-executor",
  "ream-light-client",
  "ream-network-spec",
+ "ream-storage",
  "ream-sync",
  "ream-validator-beacon",
  "serde",
@@ -5652,6 +5696,7 @@ dependencies = [
  "sha2 0.10.8",
  "snap",
  "ssz_types",
+ "tempdir",
  "thiserror 2.0.12",
  "tokio",
  "tokio-io-timeout",
@@ -5734,6 +5779,7 @@ dependencies = [
  "ream-node",
  "ream-operation-pool",
  "ream-p2p",
+ "ream-rpc-common",
  "ream-storage",
  "serde",
  "serde_json",
@@ -5741,6 +5787,18 @@ dependencies = [
  "thiserror 2.0.12",
  "tracing",
  "tree_hash",
+]
+
+[[package]]
+name = "ream-rpc-common"
+version = "0.1.0"
+dependencies = [
+ "actix-web",
+ "ream-api-types-beacon",
+ "ream-api-types-common",
+ "ream-node",
+ "serde",
+ "tracing",
 ]
 
 [[package]]
@@ -5755,6 +5813,8 @@ dependencies = [
  "ream-chain-lean",
  "ream-consensus-lean",
  "ream-p2p",
+ "ream-rpc-common",
+ "ream-storage",
  "tokio",
  "tracing",
 ]
@@ -5774,6 +5834,7 @@ dependencies = [
  "lru 0.15.0",
  "ream-bls",
  "ream-consensus-beacon",
+ "ream-consensus-lean",
  "ream-consensus-misc",
  "redb",
  "snap",
@@ -5855,17 +5916,18 @@ dependencies = [
 name = "ream-validator-lean"
 version = "0.1.0"
 dependencies = [
+ "alloy-primitives",
  "anyhow",
  "ream-chain-lean",
  "ream-consensus-lean",
  "ream-consensus-misc",
  "ream-network-spec",
- "ream-post-quantum-crypto",
  "ream-sync",
  "serde",
  "serde_yaml",
  "tokio",
  "tracing",
+ "tree_hash",
 ]
 
 [[package]]
@@ -6388,7 +6450,7 @@ version = "0.30.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b50c5943d326858130af85e049f2661ba3c78b26589b8ab98e65e80ae44a1252"
 dependencies = [
- "bitcoin_hashes",
+ "bitcoin_hashes 0.14.0",
  "rand 0.8.5",
  "secp256k1-sys",
  "serde",
@@ -7458,6 +7520,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "458f7a779bf54acc9f347480ac654f68407d3aab21269a6e3c9f922acd9e2da9"
 dependencies = [
  "getrandom 0.3.2",
+ "serde",
 ]
 
 [[package]]

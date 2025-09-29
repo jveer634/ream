@@ -91,11 +91,9 @@ impl std::fmt::Display for GossipTopic {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "/{}/{}/{}/{}",
-            TOPIC_PREFIX,
+            "/{TOPIC_PREFIX}/{}/{}/{ENCODING_POSTFIX}",
             self.fork.encode_hex(),
             self.kind,
-            ENCODING_POSTFIX
         )
     }
 }
@@ -126,42 +124,27 @@ impl From<GossipTopic> for TopicHash {
             LightClientOptimisticUpdate => LIGHT_CLIENT_OPTIMISTIC_UPDATE_TOPIC,
             BeaconAttestation(index) => {
                 return TopicHash::from_raw(format!(
-                    "/{}/{}/{}{}{}",
-                    TOPIC_PREFIX,
+                    "/{TOPIC_PREFIX}/{}/{BEACON_ATTESTATION_PREFIX}{index}{ENCODING_POSTFIX}",
                     val.fork.encode_hex(),
-                    BEACON_ATTESTATION_PREFIX,
-                    index,
-                    ENCODING_POSTFIX,
                 ));
             }
             SyncCommittee(index) => {
                 return TopicHash::from_raw(format!(
-                    "/{}/{}/{}{}{}",
-                    TOPIC_PREFIX,
+                    "/{TOPIC_PREFIX}/{}/{SYNC_COMMITTEE_PREFIX_TOPIC}{index}{ENCODING_POSTFIX}",
                     val.fork.encode_hex(),
-                    SYNC_COMMITTEE_PREFIX_TOPIC,
-                    index,
-                    ENCODING_POSTFIX,
                 ));
             }
             BlobSidecar(index) => {
                 return TopicHash::from_raw(format!(
-                    "/{}/{}/{}{}{}",
-                    TOPIC_PREFIX,
+                    "/{TOPIC_PREFIX}/{}/{BLOB_SIDECAR_PREFIX_TOPIC}{index}{ENCODING_POSTFIX}",
                     val.fork.encode_hex(),
-                    BLOB_SIDECAR_PREFIX_TOPIC,
-                    index,
-                    ENCODING_POSTFIX,
                 ));
             }
         };
 
         TopicHash::from_raw(format!(
-            "/{}/{}/{}{}",
-            TOPIC_PREFIX,
+            "/{TOPIC_PREFIX}/{}/{kind_str}{ENCODING_POSTFIX}",
             val.fork.encode_hex(),
-            kind_str,
-            ENCODING_POSTFIX
         ))
     }
 }

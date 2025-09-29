@@ -1,21 +1,29 @@
 use std::{
-    env,
+    env, fs,
     net::SocketAddr,
+    path::{Path, PathBuf},
     process,
     sync::Arc,
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
+use alloy_primitives::{FixedBytes, hex};
+use bip39::Mnemonic;
 use clap::Parser;
+use libp2p_identity::secp256k1;
+use rand::SeedableRng;
+use rand_chacha::ChaCha20Rng;
 use ream::cli::{
     Cli, Commands,
     account_manager::AccountManagerConfig,
     beacon_node::BeaconNodeConfig,
+    generate_private_key::GeneratePrivateKeyConfig,
     import_keystores::{load_keystore_directory, load_password_from_config, process_password},
     lean_node::LeanNodeConfig,
     validator_node::ValidatorNodeConfig,
     voluntary_exit::VoluntaryExitConfig,
 };
+use ream_account_manager::{message_types::MessageType, seed::derive_seed_with_user_input};
 use ream_api_types_beacon::id::ValidatorID;
 use ream_api_types_common::id::ID;
 use ream_chain_lean::{
@@ -23,10 +31,12 @@ use ream_chain_lean::{
     p2p_request::LeanP2PRequest, service::LeanChainService,
 };
 use ream_checkpoint_sync::initialize_db_from_checkpoint;
+use ream_consensus_lean::block::SignedBlock;
 use ream_consensus_misc::{
     constants::beacon::set_genesis_validator_root, misc::compute_epoch_at_slot,
 };
 use ream_executor::ReamExecutor;
+use ream_keystore::keystore::EncryptedKeystore;
 use ream_network_manager::service::NetworkManagerService;
 use ream_network_spec::networks::{
     beacon_network_spec, set_beacon_network_spec, set_lean_network_spec,
@@ -39,6 +49,7 @@ use ream_p2p::{
     },
     network::lean::{LeanNetworkConfig, LeanNetworkService},
 };
+use ream_post_quantum_crypto::hashsig::private_key::PrivateKey as HashSigPrivateKey;
 use ream_rpc_beacon::{config::RpcServerConfig, start_server};
 use ream_rpc_lean::{config::LeanRpcServerConfig, start_lean_server};
 use ream_storage::{
@@ -77,22 +88,33 @@ fn main() {
 
     let executor = ReamExecutor::new().expect("unable to create executor");
     let executor_clone = executor.clone();
+    let ream_dir = setup_data_dir(APP_NAME, cli.data_dir.clone(), cli.ephemeral)
+        .expect("Unable to initialize database directory");
+
+    if cli.purge_db {
+        reset_db(&ream_dir).expect("Unable to delete database");
+    }
+
+    let ream_db = ReamDB::new(ream_dir.clone()).expect("unable to init Ream Database");
 
     match cli.command {
         Commands::LeanNode(config) => {
-            executor_clone.spawn(async move { run_lean_node(*config, executor).await });
+            executor_clone.spawn(async move { run_lean_node(*config, executor, ream_db).await });
         }
         Commands::BeaconNode(config) => {
-            executor_clone.spawn(async move { run_beacon_node(*config, executor).await });
+            executor_clone.spawn(async move { run_beacon_node(*config, executor, ream_db).await });
         }
         Commands::ValidatorNode(config) => {
             executor_clone.spawn(async move { run_validator_node(*config, executor).await });
         }
         Commands::AccountManager(config) => {
-            executor_clone.spawn(async move { run_account_manager(*config).await });
+            executor_clone.spawn(async move { run_account_manager(*config, ream_dir).await });
         }
         Commands::VoluntaryExit(config) => {
             executor_clone.spawn(async move { run_voluntary_exit(*config).await });
+        }
+        Commands::GeneratePrivateKey(config) => {
+            executor_clone.spawn(async move { run_generate_private_key(*config).await });
         }
     }
 
@@ -118,7 +140,7 @@ fn main() {
 /// is used by all services.
 ///
 /// Besides the shared state, each service holds the channels to communicate with each other.
-pub async fn run_lean_node(config: LeanNodeConfig, executor: ReamExecutor) {
+pub async fn run_lean_node(config: LeanNodeConfig, executor: ReamExecutor, ream_db: ReamDB) {
     info!("starting up lean node...");
 
     // Initialize prometheus metrics
@@ -133,10 +155,23 @@ pub async fn run_lean_node(config: LeanNodeConfig, executor: ReamExecutor) {
 
     set_lean_network_spec(config.network);
 
+    // Initialize the lean database
+    let lean_db = ream_db
+        .init_lean_db()
+        .expect("unable to init Ream Lean Database");
+
+    info!("ream lean database has been initialized");
+
     // Initialize the lean chain with genesis block and state.
     let (genesis_block, genesis_state) = lean_genesis::setup_genesis();
-    let (lean_chain_writer, lean_chain_reader) =
-        Writer::new(LeanChain::new(genesis_block, genesis_state));
+    let (lean_chain_writer, lean_chain_reader) = Writer::new(LeanChain::new(
+        SignedBlock {
+            message: genesis_block,
+            signature: FixedBytes::default(),
+        },
+        genesis_state,
+        lean_db,
+    ));
 
     // Initialize the services that will run in the lean node.
     let (chain_sender, chain_receiver) = mpsc::unbounded_channel::<LeanChainServiceMessage>();
@@ -172,7 +207,7 @@ pub async fn run_lean_node(config: LeanNodeConfig, executor: ReamExecutor) {
             gossipsub_config,
             socket_address: config.socket_address,
             socket_port: config.socket_port,
-            secret_key_path: config.secret_key_path,
+            private_key_path: config.private_key_path,
         }),
         lean_chain_reader.clone(),
         executor.clone(),
@@ -184,7 +219,7 @@ pub async fn run_lean_node(config: LeanNodeConfig, executor: ReamExecutor) {
 
     let peer_table = network_service.peer_table();
 
-    let keystores = load_validator_registry(&config.validator_registry_path)
+    let keystores = load_validator_registry(&config.validator_registry_path, &config.node_id)
         .expect("Failed to load validator registry");
     let validator_service =
         LeanValidatorService::new(lean_chain_reader.clone(), keystores, chain_sender).await;
@@ -198,17 +233,17 @@ pub async fn run_lean_node(config: LeanNodeConfig, executor: ReamExecutor) {
     // Start the services concurrently.
     let chain_future = executor.spawn(async move {
         if let Err(err) = chain_service.start().await {
-            panic!("Chain service exited with error: {err}");
+            panic!("Chain service exited with error: {err:?}");
         }
     });
     let network_future = executor.spawn(async move {
         if let Err(err) = network_service.start(config.bootnodes).await {
-            panic!("Network service exited with error: {err}");
+            panic!("Network service exited with error: {err:?}");
         }
     });
     let validator_future = executor.spawn(async move {
         if let Err(err) = validator_service.start().await {
-            panic!("Validator service exited with error: {err}");
+            panic!("Validator service exited with error: {err:?}");
         }
     });
     let http_future = executor.spawn(async move {
@@ -239,24 +274,20 @@ pub async fn run_lean_node(config: LeanNodeConfig, executor: ReamExecutor) {
 /// At the end of setup, it starts 2 services:
 /// 1. The HTTP server that serves Beacon API, Engine API.
 /// 2. The P2P network that handles peer discovery (discv5), gossiping (gossipsub) and Req/Resp API.
-pub async fn run_beacon_node(config: BeaconNodeConfig, executor: ReamExecutor) {
+pub async fn run_beacon_node(config: BeaconNodeConfig, executor: ReamExecutor, ream_db: ReamDB) {
     info!("starting up beacon node...");
 
     set_beacon_network_spec(config.network.clone());
 
-    let ream_dir = setup_data_dir(APP_NAME, config.data_dir.clone(), config.ephemeral)
-        .expect("Unable to initialize database directory");
+    // Initialize the beacon database
+    let beacon_db = ream_db
+        .init_beacon_db()
+        .expect("unable to init Ream Beacon Database");
 
-    if config.purge_db {
-        reset_db(ream_dir.clone()).expect("Unable to delete database");
-    }
-
-    let ream_db = ReamDB::new(ream_dir.clone()).expect("unable to init Ream Database");
-
-    info!("ream database initialized ");
+    info!("ream beacon database has been initialized");
 
     let _is_ws_verified = initialize_db_from_checkpoint(
-        ream_db.clone(),
+        beacon_db.clone(),
         config.checkpoint_sync_url.clone(),
         config.weak_subjectivity_checkpoint,
     )
@@ -265,13 +296,13 @@ pub async fn run_beacon_node(config: BeaconNodeConfig, executor: ReamExecutor) {
 
     info!("Database Initialization completed");
 
-    let oldest_root = ream_db
+    let oldest_root = beacon_db
         .slot_index_provider()
         .get_oldest_root()
         .expect("Failed to access slot index provider")
         .expect("No oldest root found");
     set_genesis_validator_root(
-        ream_db
+        beacon_db
             .beacon_state_provider()
             .get(oldest_root)
             .expect("Failed to access beacon state provider")
@@ -290,8 +321,8 @@ pub async fn run_beacon_node(config: BeaconNodeConfig, executor: ReamExecutor) {
     let network_manager = NetworkManagerService::new(
         executor.clone(),
         config.into(),
-        ream_db.clone(),
-        ream_dir,
+        beacon_db.clone(),
+        beacon_db.data_dir.clone(),
         operation_pool.clone(),
     )
     .await
@@ -308,7 +339,7 @@ pub async fn run_beacon_node(config: BeaconNodeConfig, executor: ReamExecutor) {
     let http_future = executor.spawn(async move {
         start_server(
             server_config,
-            ream_db,
+            beacon_db,
             network_state,
             operation_pool,
             execution_engine,
@@ -367,32 +398,97 @@ pub async fn run_validator_node(config: ValidatorNodeConfig, executor: ReamExecu
 ///
 /// This function initializes the account manager by validating the configuration,
 /// generating keys, and starting the account manager service.
-pub async fn run_account_manager(mut config: AccountManagerConfig) {
-    info!("starting up account manager...");
-
-    // Validate the configuration
-    config
-        .validate()
-        .expect("Invalid account manager configuration");
+pub async fn run_account_manager(config: AccountManagerConfig, ream_dir: PathBuf) {
+    info!("Starting account manager...");
 
     info!(
         "Account manager configuration: lifetime={}, chunk_size={}, activation_epoch={}, num_active_epochs={}",
         config.lifetime, config.chunk_size, config.activation_epoch, config.num_active_epochs
     );
 
-    let seed_phrase = config.get_seed_phrase();
+    // Get seed phrase or generate a new one
+    let seed_phrase = config.seed_phrase.unwrap_or_else(|| {
+        let mnemonic = Mnemonic::generate(24).expect("Failed to generate mnemonic");
+        let seed_phrase = mnemonic.words().collect::<Vec<_>>().join(" ");
+        info!("{}", "=".repeat(89));
+        info!("Generated new seed phrase (KEEP SAFE): {seed_phrase}");
+        info!("{}", "=".repeat(89));
+        seed_phrase
+    });
+
+    // Create keystore directory as subdirectory of data directory
+    let keystore_dir = match &config.keystore_path {
+        Some(custom_path) => {
+            let path = Path::new(custom_path);
+            if path.is_absolute() {
+                path.to_path_buf()
+            } else {
+                ream_dir.join(custom_path)
+            }
+        }
+        None => ream_dir.join("keystores"),
+    };
+
+    if !keystore_dir.exists() {
+        fs::create_dir_all(&keystore_dir).expect("Failed to create keystore directory");
+        info!(
+            "Created keystore directory: {path}",
+            path = keystore_dir.display()
+        );
+    }
 
     // Measure key generation time
     let start_time = Instant::now();
-    let (_public_key, _private_key) = ream_account_manager::generate_keys(
-        &seed_phrase,
-        config.activation_epoch,
-        config.num_active_epochs,
-    );
+
+    // Generate keys sequentially for each message type
+    for (index, message_type) in MessageType::iter().enumerate() {
+        info!(
+            "Generating lean consensus validator keys for index {index}, message type: {message_type}..."
+        );
+
+        let seed = derive_seed_with_user_input(
+            &seed_phrase,
+            index as u32,
+            config.passphrase.as_deref().unwrap_or(""),
+        );
+
+        let (public_key, _private_key) = HashSigPrivateKey::generate_key_pair(
+            &mut <ChaCha20Rng as SeedableRng>::from_seed(seed),
+            config.activation_epoch as usize,
+            config.num_active_epochs as usize,
+        );
+
+        info!(
+            "Public key for {message_type}: {}",
+            // This should never panic
+            serde_json::to_string_pretty(&public_key).expect("Failed to serialize public key")
+        );
+
+        // Create keystore file using Keystore
+        let keystore = EncryptedKeystore::from_seed_phrase(
+            &seed_phrase,
+            config.lifetime,
+            config.activation_epoch,
+            Some(format!("Ream validator keystore for {message_type}")),
+            Some(format!("m/44'/60'/0'/0/{index}")),
+        );
+
+        // Write keystore to file with enum name
+        let filename = message_type.to_string();
+        let keystore_file_path = keystore_dir.join(filename);
+        let keystore_json =
+            ::serde_json::to_string_pretty(&keystore).expect("Failed to serialize keystore");
+
+        fs::write(&keystore_file_path, keystore_json).expect("Failed to write keystore file");
+
+        info!("Keystore written to path: {}", keystore_file_path.display());
+    }
     let duration = start_time.elapsed();
     info!("Key generation complete, took {:?}", duration);
 
     info!("Account manager completed successfully");
+
+    process::exit(0);
 }
 
 /// Runs the voluntary exit process.
@@ -461,4 +557,35 @@ fn get_current_epoch(genesis_time: u64) -> u64 {
             .as_secs()
             / beacon_network_spec().seconds_per_slot,
     )
+}
+
+/// Generates a new secp256k1 keypair and saves it to the specified path in hex encoding.
+///
+/// This allows the lean node to reuse the same network identity across restarts by loading
+/// the saved key with the --private-key-path flag.
+pub async fn run_generate_private_key(config: GeneratePrivateKeyConfig) {
+    info!("Generating new secp256k1 private key...");
+
+    assert!(
+        !config.output_path.is_dir(),
+        "Output path must point to a file, not a directory: {}",
+        config.output_path.display()
+    );
+
+    if let Some(parent) = config.output_path.parent() {
+        fs::create_dir_all(parent).expect("Failed to create parent directories");
+    }
+
+    fs::write(
+        &config.output_path,
+        hex::encode(secp256k1::Keypair::generate().secret().to_bytes()),
+    )
+    .expect("Failed to write keypair to file");
+
+    info!(
+        "secp256k1 private key generated successfully and saved to: {}",
+        config.output_path.display()
+    );
+
+    process::exit(0);
 }

@@ -30,3 +30,6 @@ tree_hash_derive.workspace = true
 # ream dependencies
 ream-consensus-beacon.workspace = true
 ream-consensus-misc.workspace = true
+
+[lints]
+workspace = true

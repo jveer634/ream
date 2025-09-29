@@ -97,9 +97,8 @@ impl FromStr for KZGCommitment {
             Ok(Self(kzg_commitment_bytes))
         } else {
             Err(format!(
-                "InvalidByteLength: got {}, expected {}",
+                "InvalidByteLength: got {}, expected {BYTES_PER_COMMITMENT}",
                 bytes.len(),
-                BYTES_PER_COMMITMENT
             ))
         }
     }

@@ -17,7 +17,7 @@ pub fn create_lean_clock_interval() -> anyhow::Result<Interval> {
                     lean_network_spec().genesis_time,
                     SystemTime::now()
                         .duration_since(UNIX_EPOCH)
-                        .unwrap()
+                        .expect("system time before UNIX EPOCH")
                         .as_secs()
                 ))
             })?;

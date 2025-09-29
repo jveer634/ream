@@ -129,8 +129,8 @@ pub async fn validate_blob_sidecar(
         Ok(expected_index) => {
             if expected_index != header.proposer_index {
                 return Ok(ValidationResult::Reject(format!(
-                    "Wrong proposer index: slot {}: expected {}, got {}",
-                    header.slot, expected_index, header.proposer_index
+                    "Wrong proposer index: slot {}: expected {expected_index}, got {}",
+                    header.slot, header.proposer_index
                 )));
             }
         }

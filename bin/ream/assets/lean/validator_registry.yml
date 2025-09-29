@@ -1,9 +1,8 @@
-validators:
-- validator_id: 0
-  keystore_path: /path/to/keystore
-- validator_id: 1
-  keystore_path: /path/to/keystore
-- validator_id: 2
-  keystore_path: /path/to/keystore
-- validator_id: 3
-  keystore_path: /path/to/keystore
+# Node-based validator registry
+# Each node identifier maps to a list of validator IDs it controls
+
+ream:
+  - 0
+  - 1
+  - 2
+  - 3
