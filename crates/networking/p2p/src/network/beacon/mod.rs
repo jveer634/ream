@@ -797,6 +797,7 @@ impl Network {
             } => Some(ReamNetworkEvent::GossipsubMessage { message }),
             GossipsubEvent::Subscribed { peer_id, topic } => {
                 trace!("Peer {peer_id} subscribed to topic: {topic:?}");
+                // todo: need to subscribe here
                 None
             }
             GossipsubEvent::Unsubscribed { peer_id, topic } => {

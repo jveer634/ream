@@ -18,10 +18,17 @@ use ream_consensus_beacon::{
     electra::beacon_state::BeaconState, sync_committe_selection::SyncCommitteeSelection,
 };
 use ream_consensus_misc::{
-    attestation_data::AttestationData, constants::beacon::SLOTS_PER_EPOCH, validator::Validator,
+    attestation_data::AttestationData,
+    constants::beacon::{SLOTS_PER_EPOCH, SYNC_COMMITTEE_SIZE},
+    validator::Validator,
 };
 use ream_fork_choice::store::Store;
+use ream_network_manager::service::NetworkManagerService;
 use ream_operation_pool::OperationPool;
+use ream_p2p::{
+    gossipsub::beacon::topics::{GossipTopic, GossipTopicKind},
+    network::beacon::channel::GossipMessage,
+};
 use ream_storage::{db::beacon::BeaconDB, tables::field::Field};
 use serde::Serialize;
 
@@ -499,7 +506,26 @@ pub async fn post_sync_committee_selections(
 
 #[post("/validator/sync_committee_subscriptions")]
 pub async fn post_sync_committee_subscriptions(
-    _subscriptions: Json<Vec<SyncCommitteeSubscription>>,
+    db: Data<BeaconDB>,
+    subscriptions: Json<Vec<SyncCommitteeSubscription>>,
+    network_manager: Data<NetworkManagerService>,
 ) -> Result<impl Responder, ApiError> {
+    let subscriptions = subscriptions.into_inner();
+    let beacon_state = db.get_latest_state().map_err(|err| {
+        ApiError::InternalError(format!("Failed to latest state, error: {err:?}"))
+    })?;
+
+    for subscription in subscriptions {
+        network_manager.p2p_sender.send_gossip(GossipMessage {
+            topic: GossipTopic {
+                fork: beacon_state.fork.current_version,
+                kind: GossipTopicKind::SyncCommittee(
+                    subscription.validator_index / SYNC_COMMITTEE_SIZE,
+                ),
+            },
+            data: Vec::new(),
+        });
+    }
+
     Ok(HttpResponse::Ok())
 }
