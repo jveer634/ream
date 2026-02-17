@@ -52,6 +52,8 @@ use ream_storage::{
     },
 };
 use ream_sync::rwlock::{Reader, Writer};
+#[cfg(feature = "devnet3")]
+use ssz::{Decode, Encode};
 use ssz_types::{BitList, VariableList, typenum::U4096};
 use tokio::sync::Mutex;
 use tree_hash::TreeHash;
@@ -1322,7 +1324,10 @@ impl Store {
                 proposer_attestation.validator_id,
                 &proposer_attestation.data,
             ),
-            signed_block_with_attestation.signature.proposer_signature,
+            signed_block_with_attestation
+                .signature
+                .proposer_signature
+                .clone(),
         )?;
 
         #[cfg(feature = "devnet3")]
@@ -1340,7 +1345,10 @@ impl Store {
                         proposer_attestation.validator_id,
                         &proposer_attestation.data,
                     ),
-                    signed_block_with_attestation.signature.proposer_signature,
+                    signed_block_with_attestation
+                        .signature
+                        .proposer_signature
+                        .clone(),
                 )?;
             }
         }
@@ -1351,7 +1359,10 @@ impl Store {
                 SignedAttestation {
                     validator_id: proposer_attestation.validator_id,
                     message: proposer_attestation.data.clone(),
-                    signature: signed_block_with_attestation.signature.proposer_signature,
+                    signature: signed_block_with_attestation
+                        .signature
+                        .proposer_signature
+                        .clone(),
                 },
                 false,
             )
@@ -1370,8 +1381,7 @@ impl Store {
             let signature_bytes = signed_block_with_attestation
                 .signature
                 .proposer_signature
-                .inner
-                .to_vec();
+                .as_ssz_bytes();
 
             let proof_data = signature_bytes.try_into().map_err(|err| {
                 anyhow!("Failed to convert proposer signature to VariableList {err:?}")
@@ -1569,7 +1579,8 @@ impl Store {
                 })
                 .collect::<anyhow::Result<Vec<_>>>()?;
 
-            let sig = Signature::from(proof.proof_data.as_ref());
+            let sig = Signature::from_ssz_bytes(proof.proof_data.as_ref())
+                .map_err(|err| anyhow!("Failed to decode signature: {err:?}"))?;
 
             for pubkey in &public_keys {
                 let is_valid = sig.verify(pubkey, attestation_slot as u32, &data_root.0)?;
@@ -1688,7 +1699,7 @@ impl Store {
     ) -> anyhow::Result<()> {
         let validator_id = signed_attestation.validator_id;
         let attestation_data = &signed_attestation.message;
-        let signature = signed_attestation.signature;
+        let signature = signed_attestation.signature.clone();
 
         self.validate_attestation(&signed_attestation).await?;
 

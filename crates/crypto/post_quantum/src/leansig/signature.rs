@@ -1,40 +1,59 @@
-use alloy_primitives::FixedBytes;
-use anyhow::anyhow;
-use leansig::{MESSAGE_LENGTH, serialization::Serializable, signature::SignatureScheme};
+use leansig::{signature::SignatureScheme, MESSAGE_LENGTH};
 use serde::{Deserialize, Serialize};
+use ssz::{Decode, Encode};
 use ssz_derive::{Decode, Encode};
-use tree_hash_derive::TreeHash;
 
-use crate::leansig::{LeanSigScheme, errors::LeanSigError, public_key::PublicKey};
+use crate::leansig::{public_key::PublicKey, LeanSigScheme};
 
-const SIGNATURE_SIZE: usize = 3112;
+/// The inner leansig signature type with built-in SSZ support.
+pub type LeanSigSignature = <LeanSigScheme as SignatureScheme>::Signature;
 
-type LeanSigSignature = <LeanSigScheme as SignatureScheme>::Signature;
+const BLANK_SIGNATURE_SSZ_BYTES: [u8; 40] = [
+    36, 0, 0, 0, // offset_path = 36
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // rho (28 zeros)
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, //
+    40, 0, 0, 0, // offset_hashes = 40
+    4, 0, 0, 0, // path: empty HashTreeOpening
+];
 
-/// Wrapper around a fixed-size serialized hash-based signature.
-#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize, Encode, Decode, TreeHash, Copy)]
+/// Wrapper around leansig's signature type.
+/// Uses leansig's built-in SSZ encoding for interoperability with other clients.
+#[derive(Clone, Serialize, Deserialize, Encode, Decode)]
+#[ssz(struct_behaviour = "transparent")]
 pub struct Signature {
-    pub inner: FixedBytes<SIGNATURE_SIZE>,
+    pub inner: LeanSigSignature,
 }
 
-impl From<&[u8]> for Signature {
-    fn from(value: &[u8]) -> Self {
-        Self {
-            inner: FixedBytes::from_slice(value),
-        }
+impl std::fmt::Debug for Signature {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Signature")
+            .field("inner", &"<LeanSigSignature>")
+            .finish()
     }
 }
+
+impl PartialEq for Signature {
+    fn eq(&self, other: &Self) -> bool {
+        // Compare by SSZ encoding since LeanSigSignature doesn't implement PartialEq
+        self.inner.as_ssz_bytes() == other.inner.as_ssz_bytes()
+    }
+}
+
+impl Eq for Signature {}
 
 impl Signature {
-    pub fn new(inner: FixedBytes<SIGNATURE_SIZE>) -> Self {
-        Self { inner }
-    }
-
+    /// Create a blank/placeholder signature.
+    ///
+    /// This decodes from minimal valid SSZ bytes, avoiding expensive key generation.
+    /// Only use in contexts where the signature won't be validated.
     pub fn blank() -> Self {
-        Self::new(Default::default())
+        Self::from_ssz_bytes(&BLANK_SIGNATURE_SSZ_BYTES).expect("blank signature bytes are valid")
     }
 
     /// Create a mock signature for testing purposes.
+    ///
+    /// Note: This generates a real signature which is expensive. Prefer `blank()` when
+    /// you just need a placeholder signature.
     pub fn mock() -> Self {
         use rand::rng;
 
@@ -48,15 +67,12 @@ impl Signature {
             .expect("Mock signature generation failed")
     }
 
-    pub fn from_lean_sig(signature: LeanSigSignature) -> Result<Self, LeanSigError> {
-        Ok(Self {
-            inner: FixedBytes::try_from(signature.to_bytes().as_slice())?,
-        })
+    pub fn from_lean_sig(signature: LeanSigSignature) -> Self {
+        Self { inner: signature }
     }
 
-    pub fn as_lean_sig(&self) -> anyhow::Result<LeanSigSignature> {
-        LeanSigSignature::from_bytes(self.inner.as_slice())
-            .map_err(|err| anyhow!("Failed to decode LeanSigSignature from SSZ: {err:?}"))
+    pub fn as_lean_sig(&self) -> &LeanSigSignature {
+        &self.inner
     }
 
     pub fn verify(
@@ -69,16 +85,26 @@ impl Signature {
             &public_key.as_lean_sig()?,
             epoch,
             message,
-            &self.as_lean_sig()?,
+            &self.inner,
         ))
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use alloy_primitives::FixedBytes;
+    use leansig::serialization::Serializable;
     use rand::rng;
+    use ssz::{Decode, Encode};
 
     use crate::leansig::{private_key::PrivateKey, signature::Signature};
+
+    const LEGACY_SIGNATURE_SIZE: usize = 3112;
+
+    #[derive(ssz_derive::Encode)]
+    struct LegacySignature {
+        inner: FixedBytes<LEGACY_SIGNATURE_SIZE>,
+    }
 
     #[test]
     fn test_serialization_roundtrip() {
@@ -100,13 +126,32 @@ mod tests {
         assert!(result.is_ok(), "Signing should succeed");
         let signature = result.unwrap();
 
-        // convert to leansig signature
-        let hash_sig_signature = signature.as_lean_sig().unwrap();
-
-        // convert back to signature
-        let signature_returned = Signature::from_lean_sig(hash_sig_signature).unwrap();
+        // SSZ roundtrip test
+        let ssz_bytes = signature.as_ssz_bytes();
+        let signature_decoded = Signature::from_ssz_bytes(&ssz_bytes).unwrap();
 
         // verify roundtrip
-        assert_eq!(signature, signature_returned);
+        assert_eq!(signature, signature_decoded);
+    }
+
+    #[test]
+    fn test_ssz_bytes_match_legacy_signature_wrapper() {
+        let mut rng = rng();
+        let activation_epoch = 0;
+        let num_active_epochs = 10;
+
+        let (_, private_key) =
+            PrivateKey::generate_key_pair(&mut rng, activation_epoch, num_active_epochs);
+
+        let epoch = 5;
+        let message = [0u8; 32];
+        let signature = private_key.sign(&message, epoch).unwrap();
+
+        let legacy_signature = LegacySignature {
+            inner: FixedBytes::try_from(signature.as_lean_sig().to_bytes().as_slice())
+                .expect("legacy signature bytes should match fixed size"),
+        };
+
+        assert_eq!(legacy_signature.as_ssz_bytes(), signature.as_ssz_bytes());
     }
 }
